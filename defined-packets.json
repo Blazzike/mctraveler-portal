@@ -1,0 +1,272 @@
+[
+  {
+    "state": "handshaking",
+    "direction": "toServer",
+    "name": "set_protocol",
+    "exportName": "handshakePacket"
+  },
+  {
+    "state": "status",
+    "direction": "toServer",
+    "name": "ping_start",
+    "exportName": "statusRequestPacket"
+  },
+  {
+    "state": "status",
+    "direction": "toClient",
+    "name": "server_info",
+    "exportName": "statusResponsePacket"
+  },
+  {
+    "state": "status",
+    "direction": "toServer",
+    "name": "ping",
+    "exportName": "pingRequestPacket"
+  },
+  {
+    "state": "status",
+    "direction": "toClient",
+    "name": "ping",
+    "exportName": "pingResponsePacket"
+  },
+  {
+    "state": "login",
+    "direction": "toClient",
+    "name": "disconnect",
+    "exportName": "loginDisconnectPacket"
+  },
+  {
+    "state": "login",
+    "direction": "toClient",
+    "name": "encryption_begin",
+    "exportName": "encryptionRequestPacket"
+  },
+  {
+    "state": "login",
+    "direction": "toServer",
+    "name": "encryption_begin",
+    "exportName": "encryptionResponsePacket"
+  },
+  {
+    "state": "login",
+    "direction": "toServer",
+    "name": "login_start",
+    "exportName": "loginStartPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "chat_command",
+    "exportName": "chatCommandPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "chat_command_signed",
+    "exportName": "chatCommandSignedPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "chat_message",
+    "exportName": "chatMessagePacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "system_chat",
+    "exportName": "systemChatPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "position",
+    "exportName": "playerPositionPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "position_look",
+    "exportName": "playerPositionLookPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "block_dig",
+    "exportName": "playerBlockDigPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "block_place",
+    "exportName": "playerBlockPlacePacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "use_item",
+    "exportName": "playerUseItemPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "respawn",
+    "exportName": "respawnPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "login",
+    "exportName": "joinGamePacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "playerlist_header",
+    "exportName": "tabListHeaderFooterPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "set_slot",
+    "exportName": "setSlotPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "edit_book",
+    "exportName": "editBookPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "close_window",
+    "exportName": "closeWindowPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "window_click",
+    "exportName": "windowClickPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "open_book",
+    "exportName": "openBookPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "scoreboard_objective",
+    "exportName": "scoreboardObjectivePacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "scoreboard_display_objective",
+    "exportName": "scoreboardDisplayObjectivePacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "scoreboard_score",
+    "exportName": "scoreboardScorePacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "reset_score",
+    "exportName": "resetScorePacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "use_entity",
+    "exportName": "useEntityPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "update_sign",
+    "exportName": "updateSignPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "block_change",
+    "exportName": "blockChangePacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "game_state_change",
+    "exportName": "gameStateChangePacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "held_item_slot",
+    "exportName": "heldItemChangePacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "player_remove",
+    "exportName": "playerRemovePacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "open_window",
+    "exportName": "openWindowPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "close_window",
+    "exportName": "closeWindowClientPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "window_items",
+    "exportName": "windowItemsPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "declare_commands",
+    "exportName": "declareCommandsPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "keep_alive",
+    "exportName": "keepAliveClientPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "keep_alive",
+    "exportName": "keepAliveServerPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "name": "tab_complete",
+    "exportName": "tabCompleteRequestPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "tab_complete",
+    "exportName": "tabCompleteResponsePacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "acknowledge_player_digging",
+    "exportName": "acknowledgePlayerDiggingPacket"
+  }
+]

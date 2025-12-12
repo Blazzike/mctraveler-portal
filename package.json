@@ -1,0 +1,50 @@
+{
+  "name": "mctraveler-portal",
+  "module": "main.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "PRODUCTION=1 bun run launcher.ts",
+    "dev": "bun run launcher.ts",
+    "minecraft": "bun run minecraft-server.ts",
+    "minecraft:primary": "bun run minecraft-server.ts primary",
+    "minecraft:secondary": "bun run minecraft-server.ts secondary",
+    "proxy": "bun run main.ts",
+    "proxy:watch": "bun run --watch main.ts",
+    "proxy:watch:node": "node --watch --import tsx main.ts",
+    "proxy:node": "node --import tsx main.ts",
+    "test": "bun test",
+    "generate-packets": "bun run scripts/generate-packets.ts",
+    "format": "biome format --write .",
+    "lint": "biome lint --write .",
+    "check": "biome check --write .",
+    "typecheck": "tsc --noEmit",
+    "precommit": "bun run typecheck && bun run check",
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "bun run precommit"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.5",
+    "@types/bun": "latest",
+    "@types/node": "^24.7.1",
+    "simple-git-hooks": "^2.13.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@types/blessed": "^0.1.25",
+    "@types/node-forge": "^1.3.14",
+    "blessed": "^0.1.81",
+    "dedent": "^1.7.0",
+    "minecraft-data": "^3.100.0",
+    "minecraft-protocol": "^1.62.0",
+    "mineflayer": "^4.33.0",
+    "nbt-ts": "^1.3.6",
+    "node-forge": "^1.3.1",
+    "prismarine-nbt": "^2.7.0",
+    "tsx": "^4.20.6"
+  }
+}
