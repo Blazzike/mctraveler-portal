@@ -122,6 +122,8 @@ async function getLatestMinecraftVersion(): Promise<string> {
   console.log(`Latest Minecraft version: ${latestVersion}`);
 
   return latestVersion;
+  // uncomment this for local development and change it to the version you want to use
+  // return '1.21.10';
 }
 
 async function downloadMinecraftServer(version: string): Promise<string> {
