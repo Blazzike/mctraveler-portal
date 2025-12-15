@@ -20,6 +20,8 @@ const JAVA_DIR = join(WORK_DIR, 'java');
 function getJavaExecutablePath(): string {
   if (process.platform === 'darwin') {
     return join(JAVA_DIR, 'jdk-21.0.2.jdk', 'Contents', 'Home', 'bin', 'java');
+  } else if (process.platform === 'win32') {
+    return join(JAVA_DIR, 'bin', 'java.exe');
   } else {
     return join(JAVA_DIR, 'bin', 'java');
   }
@@ -85,6 +87,9 @@ async function downloadAndInstallJava(): Promise<void> {
       javaUrl = 'https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_linux-x64_bin.tar.gz';
       fileName = 'openjdk-21.0.2_linux-x64_bin.tar.gz';
     }
+  } else if (process.platform === 'win32') {
+    javaUrl = 'https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_windows-x64_bin.zip';
+    fileName = 'openjdk-21.0.2_windows-x64_bin.zip';
   } else {
     throw new Error(`Unsupported platform: ${process.platform}`);
   }

@@ -315,4 +315,4 @@ appendToBox(proxyBox, '{cyan-fg}Initializing Proxy Server...{/cyan-fg}');
 
 startProcess('bun', ['minecraft:primary'], primaryBox, 'Primary Server');
 startProcess('bun', ['minecraft:secondary'], secondaryBox, 'Secondary Server');
-startProcess('bun', ['proxy:watch:node'], proxyBox, 'Proxy Server');
+startProcess('bun', ['proxy:watch'], proxyBox, 'Proxy Server');
