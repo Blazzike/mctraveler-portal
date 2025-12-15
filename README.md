@@ -99,6 +99,34 @@ Run the test suite using Bun's test runner:
 bun test
 ```
 
+## 🔧 Troubleshooting (Local Development)
+
+If you encounter issues while running locally, try the following steps (but **do
+not commit these changes**):
+
+### "Disconnected" Error on Proxy Connection
+
+If you keep getting disconnected from the proxy or see socket errors:
+
+1. Open `config.ts`.
+2. Set `export const kIsOnlineMode = false;`.
+   - This disables Mojang authentication, which is often required for local
+     testing with offline clients or bots.
+
+### Minecraft Version Mismatch / Download Issues
+
+If the server downloads the wrong version or you need to force a specific
+version:
+
+1. Open `minecraft-server.ts`.
+2. Find the `getLatestMinecraftVersion` function.
+3. Uncomment the return statement to hardcode the version string (e.g.,
+   `return '1.21.10';`).
+   ```typescript
+   // return latestVersion;
+   return "1.21.10"; // Uncomment this line
+   ```
+
 ## 🤝 Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development guidelines, code
