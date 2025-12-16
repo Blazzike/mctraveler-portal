@@ -6,6 +6,7 @@ import OnlinePlayersModule from '@/modules/OnlinePlayersModule';
 import PersistenceModule from '@/modules/PersistenceModule';
 import PlayerInfoBitflagsModule from '@/modules/PlayerInfoBitflagsModule';
 import ProtectionHooksModule from '@/modules/ProtectionHooksModule';
+import SpawnEntityModule from '@/modules/SpawnEntityModule';
 import TabListModule from '@/modules/TabListModule';
 
 export default defineFeature({
@@ -19,6 +20,7 @@ export default defineFeature({
     heldItem: HeldItemModule,
     playerInfo: PlayerInfoBitflagsModule,
     protection: ProtectionHooksModule,
+    spawnEntity: SpawnEntityModule,
   },
   onEnable: () => {},
 });
