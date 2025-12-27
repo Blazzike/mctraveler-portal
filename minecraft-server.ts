@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { join, resolve } from 'node:path';
 import dedent from 'dedent';
+import { kProtocolVersionString } from './config';
 
 type ServerType = 'primary' | 'secondary';
 
@@ -109,21 +110,28 @@ async function downloadAndInstallJava(): Promise<void> {
   }
 }
 
-async function getLatestMinecraftVersion(): Promise<string> {
-  console.log('Fetching latest Minecraft server version...');
+async function getMinecraftVersion(): Promise<string> {
+  const pinnedVersion = kProtocolVersionString;
 
-  const response = await fetch('https://launchermeta.mojang.com/mc/game/version_manifest.json');
-  if (!response.ok) {
-    throw new Error(`Failed to fetch version manifest: ${response.statusText}`);
+  console.log('Checking for Minecraft version updates...');
+
+  try {
+    const response = await fetch('https://launchermeta.mojang.com/mc/game/version_manifest.json');
+    if (response.ok) {
+      const manifest = (await response.json()) as any;
+      const latestVersion = manifest.latest.release;
+
+      if (latestVersion === pinnedVersion) {
+        console.log(`Using Minecraft version ${pinnedVersion} (latest)`);
+      } else {
+        console.log(`Using Minecraft version ${pinnedVersion} (latest available: ${latestVersion})`);
+      }
+    }
+  } catch {
+    console.log(`Using Minecraft version ${pinnedVersion} (could not check for updates)`);
   }
 
-  const manifest = (await response.json()) as any;
-  const latestVersion = manifest.latest.release;
-  console.log(`Latest Minecraft version: ${latestVersion}`);
-
-  return latestVersion;
-  // uncomment this for local development and change it to the version you want to use
-  // return '1.21.10';
+  return pinnedVersion;
 }
 
 async function downloadMinecraftServer(version: string): Promise<string> {
@@ -221,7 +229,7 @@ async function startMinecraftServer(javaPath: string, serverJarPath: string, por
 console.log(`Starting ${serverType} server on port ${SERVER_PORT}...`);
 
 await downloadAndInstallJava();
-const version = await getLatestMinecraftVersion();
+const version = await getMinecraftVersion();
 const serverJarPath = await downloadMinecraftServer(version);
 const javaExecutable = getJavaExecutablePath();
 await startMinecraftServer(javaExecutable, serverJarPath, SERVER_PORT);
