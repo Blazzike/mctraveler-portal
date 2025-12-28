@@ -376,6 +376,24 @@ function _extractUsernameFromWith(withArray: any[]): string | null {
   return null;
 }
 
+function broadcastSystemChatToAll(nbtData: Buffer): void {
+  const packetId = varInt(systemChatPacket.id);
+  const actionBarByte = Buffer.from([0x00]);
+  const packetContent = Buffer.concat([packetId, nbtData, actionBarByte]);
+  const fullPacket = Buffer.concat([varInt(packetContent.length), packetContent]);
+
+  for (const player of onlinePlayers.values()) {
+    const socket = playerSockets.get(player);
+    if (socket && (socket.readyState === 'open' || socket.readyState === 'writeOnly')) {
+      try {
+        socket.write(fullPacket);
+      } catch {
+        // Socket closed, ignore
+      }
+    }
+  }
+}
+
 registerHook(FeatureHook.SystemChat, (data: { nbt: Buffer; isActionBar: boolean }) => {
   if (data.isActionBar) {
     return null;
@@ -390,6 +408,11 @@ registerHook(FeatureHook.SystemChat, (data: { nbt: Buffer; isActionBar: boolean 
 
     if (decoded.translate === 'multiplayer.player.left') {
       return false;
+    }
+
+    // Broadcast death messages to all players cross-server
+    if (decoded.translate && decoded.translate.startsWith('death.')) {
+      broadcastSystemChatToAll(data.nbt);
     }
   } catch {
     return null;
