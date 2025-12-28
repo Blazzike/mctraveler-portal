@@ -520,10 +520,8 @@ export default defineFeature({
     registerHook(FeatureHook.CheckEntityInteractProtection, ({ player, action, isHoldingItem }) => {
       const region = playerCurrentRegion.get(player);
       if (region && !canModifyRegion(region, player) && !region.flags.has('DISABLE_ANIMAL_PROTECTION')) {
-        if (action === 'attack') {
-          sendProtectionMessage(player, region.title);
-          return true;
-        }
+        // Don't block attacks - hostile mobs should always be attackable
+        // We can't distinguish entity types, so allow all attacks
         if ((action === 'interact' || action === 'interact_at') && isHoldingItem && !region.flags.has('ENABLE_PUBLIC_VILLAGER_TRADING')) {
           sendProtectionMessage(player, region.title);
           return true;
