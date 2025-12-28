@@ -183,7 +183,7 @@ async function setupServerFiles(serverDir: string, port: number): Promise<void> 
   }
 }
 
-async function startMinecraftServer(javaPath: string, serverJarPath: string, port: number): Promise<void> {
+async function startMinecraftServer(javaPath: string, serverJarPath: string, port: number): Promise<number> {
   const serverDir = WORK_DIR;
 
   await setupServerFiles(serverDir, port);
@@ -211,7 +211,7 @@ async function startMinecraftServer(javaPath: string, serverJarPath: string, por
   });
 
   let isShuttingDown = false;
-  process.on('SIGINT', () => {
+  const sigintHandler = () => {
     if (isShuttingDown) {
       return;
     }
@@ -219,11 +219,14 @@ async function startMinecraftServer(javaPath: string, serverJarPath: string, por
     isShuttingDown = true;
     console.log('\nShutting down Minecraft server...');
     serverProcess.kill('SIGINT');
-  });
+  };
+
+  process.on('SIGINT', sigintHandler);
 
   const exitCode = await serverProcess.exited;
+  process.off('SIGINT', sigintHandler);
   console.log(`Minecraft server exited with code ${exitCode}`);
-  process.exit(exitCode);
+  return exitCode;
 }
 
 console.log(`Starting ${serverType} server on port ${SERVER_PORT}...`);
@@ -232,4 +235,36 @@ await downloadAndInstallJava();
 const version = await getMinecraftVersion();
 const serverJarPath = await downloadMinecraftServer(version);
 const javaExecutable = getJavaExecutablePath();
-await startMinecraftServer(javaExecutable, serverJarPath, SERVER_PORT);
+
+const MAX_RETRIES = 3;
+let retryCount = 0;
+const SUCCESS_THRESHOLD_MS = 60000; // 1 minute
+
+while (retryCount < MAX_RETRIES) {
+  const startTime = Date.now();
+  const exitCode = await startMinecraftServer(javaExecutable, serverJarPath, SERVER_PORT);
+
+  const duration = Date.now() - startTime;
+
+  // If the server was up for more than the threshold, we consider it a successful run
+  // and reset the retry count.
+  if (duration > SUCCESS_THRESHOLD_MS) {
+    console.log('Server was running for a while, resetting retry count.');
+    retryCount = 0;
+  }
+
+  // If it was a clean exit (SIGINT/Ctrl+C usually leads to exit code 130 or 0), don't retry
+  if (exitCode === 0 || exitCode === 130) {
+    console.log('Server stopped normally.');
+    process.exit(0);
+  }
+
+  retryCount++;
+  if (retryCount < MAX_RETRIES) {
+    console.log(`Server crashed! Retrying (${retryCount}/${MAX_RETRIES}) in 5 seconds...`);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+  } else {
+    console.error(`Server crashed ${MAX_RETRIES} times. Giving up.`);
+    process.exit(exitCode);
+  }
+}
