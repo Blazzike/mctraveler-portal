@@ -20,6 +20,7 @@ import { anonymousNbt, byte, double, string, varInt } from '@/encoding/data-buff
 import { executeCommand } from '@/feature-api/command';
 import { executeHook, executeHookFirst, FeatureHook, registerHook } from '@/feature-api/manager';
 import p from '@/feature-api/paint';
+import { notifyPlayerJoin, notifyPlayerLeave } from '@/module-api/module';
 import { readPacketFields, writePacket } from '@/network/defined-packet';
 import { enableEncryption, generateServerKeyPair, rsaDecrypt, type ServerKeyPair } from '@/network/encryption';
 import { handleProxyQuery } from '@/network/handle-proxy-query';
@@ -158,6 +159,9 @@ function trackPlayerLogin(
   onlinePlayers.set(uuid, player);
   playerSockets.set(player, socket);
 
+  // Notify modules
+  notifyPlayerJoin(player);
+
   // Set up server switcher callback
   executeHook(FeatureHook.SetServerSwitcher, {
     uuid,
@@ -177,8 +181,11 @@ function trackConnectionClose(uuid: string): void {
   if (player) {
     console.log(`[- player] ${player.username}`);
     onlinePlayers.delete(uuid);
+    playerLastServer.delete(uuid);
     executeHook(FeatureHook.ClearServerSwitcher, { uuid });
+    executeHook(FeatureHook.PlayerLeave, { player });
     executeHook(FeatureHook.TrackPlayerLogout, { uuid });
+    notifyPlayerLeave(player);
   }
 }
 
