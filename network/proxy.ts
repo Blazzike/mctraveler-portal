@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import { kIsOnlineMode, kPrimaryPort, kProtocolVersion, kSecondaryPort } from '@/config';
 import {
@@ -113,7 +114,42 @@ const playerSockets = new WeakMap<OnlinePlayer, net.Socket>();
 const serverSockets = new WeakMap<OnlinePlayer, net.Socket>();
 const playerHeldSlots = new WeakMap<OnlinePlayer, number>();
 const playerPositions = new WeakMap<OnlinePlayer, { x: number; y: number; z: number }>();
+const PLAYER_LAST_SERVER_FILE = 'data/player-last-server.json';
 const playerLastServer = new Map<string, 'primary' | 'secondary'>();
+
+function loadPlayerLastServers(): void {
+  try {
+    if (existsSync(PLAYER_LAST_SERVER_FILE)) {
+      const data = JSON.parse(readFileSync(PLAYER_LAST_SERVER_FILE, 'utf8'));
+      for (const [uuid, server] of Object.entries(data)) {
+        if (server === 'primary' || server === 'secondary') {
+          playerLastServer.set(uuid, server);
+        }
+      }
+      console.log(`[PlayerWorld] Loaded ${playerLastServer.size} player world preferences`);
+    }
+  } catch (e) {
+    console.error('[PlayerWorld] Failed to load player last servers:', e);
+  }
+}
+
+function savePlayerLastServers(): void {
+  try {
+    const data: Record<string, string> = {};
+    for (const [uuid, server] of playerLastServer.entries()) {
+      data[uuid] = server;
+    }
+    const dir = PLAYER_LAST_SERVER_FILE.substring(0, PLAYER_LAST_SERVER_FILE.lastIndexOf('/'));
+    if (!existsSync(dir)) {
+      require('fs').mkdirSync(dir, { recursive: true });
+    }
+    writeFileSync(PLAYER_LAST_SERVER_FILE, JSON.stringify(data, null, 2));
+  } catch (e) {
+    console.error('[PlayerWorld] Failed to save player last servers:', e);
+  }
+}
+
+loadPlayerLastServers();
 
 interface OnlinePlayer {
   uuid: string;
@@ -181,7 +217,7 @@ function trackConnectionClose(uuid: string): void {
   if (player) {
     console.log(`[- player] ${player.username}`);
     onlinePlayers.delete(uuid);
-    playerLastServer.delete(uuid);
+    // Don't delete playerLastServer - we want to persist it across sessions
     executeHook(FeatureHook.ClearServerSwitcher, { uuid });
     executeHook(FeatureHook.PlayerLeave, { player });
     executeHook(FeatureHook.TrackPlayerLogout, { uuid });
@@ -310,6 +346,7 @@ function getPlayerLastServerName(uuid: string): 'primary' | 'secondary' | undefi
 
 function setPlayerLastServerName(uuid: string, server: 'primary' | 'secondary'): void {
   playerLastServer.set(uuid, server);
+  savePlayerLastServers();
 }
 
 async function syncPlayerData(uuid: string, fromPort: number, toPort: number): Promise<void> {
