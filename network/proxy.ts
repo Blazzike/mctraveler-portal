@@ -30,6 +30,7 @@ import { handleClientToServerPacket, handleServerToClientPacket, type ProxyPlaye
 import { createPacketQueue } from '@/network/packet-queue';
 import type { StatusResponse } from '@/network/types';
 import { forwardPacket, safeWrite } from '@/network/util';
+import { profilePropertiesMap } from '@/modules/TabListModule';
 
 function generateOfflineUUID(username: string): string {
   const hash = createHash('md5').update(`OfflinePlayer:${username}`).digest();
@@ -46,7 +47,7 @@ export function broadcastPlayerJoin(uuid: string, username: string, excludeUuid?
   const onlinePlayers = executeHookFirst<OnlinePlayer[]>(FeatureHook.GetOnlinePlayers) || [];
   onlinePlayers.forEach((player) => {
     if (excludeUuid && player.uuid === excludeUuid) return;
-    const socket = playerSockets.get(player);
+    const socket = getPlayerSocket(player);
     if (socket && packet && (socket.readyState === 'open' || socket.readyState === 'writeOnly')) {
       try {
         socket.write(packet);
@@ -60,11 +61,14 @@ export function broadcastPlayerJoin(uuid: string, username: string, excludeUuid?
 export function broadcastPlayerLeave(uuid: string) {
   executeHook(FeatureHook.RemovePlayerFromTabList, { uuid });
 
+  // Clean up profile properties for this player
+  profilePropertiesMap.delete(uuid);
+
   const packet = executeHookFirst<Buffer>(FeatureHook.BuildPlayerRemovePacket, { uuid });
 
   const onlinePlayers = executeHookFirst<OnlinePlayer[]>(FeatureHook.GetOnlinePlayers) || [];
   onlinePlayers.forEach((player) => {
-    const socket = playerSockets.get(player);
+    const socket = getPlayerSocket(player);
     if (socket && packet && (socket.readyState === 'open' || socket.readyState === 'writeOnly')) {
       try {
         socket.write(packet);
@@ -762,6 +766,14 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
 
                     // Switch complete
                     isSwitching = false;
+
+                    // Re-broadcast this player to all other players after switch
+                    if (trackedPlayer) {
+                      broadcastPlayerJoin(trackedPlayer.uuid, trackedPlayer.username, trackedPlayer.uuid);
+                      // Also send the global tab list to this player
+                      sendGlobalTabList(trackedPlayer);
+                      sendTabListHeaderFooter(trackedPlayer);
+                    }
                   } catch (error) {
                     console.error('[Switch] Failed to apply dimension trick:', error);
                     // Fallback: just forward the packet
@@ -1235,6 +1247,18 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
 
       clientSocket.on('close', () => {
         if (trackedPlayer) {
+          // Broadcast leave to all other players BEFORE removing from tracking
+          broadcastPlayerLeave(trackedPlayer.uuid);
+          // Broadcast leave message
+          const results = executeHook(FeatureHook.PlayerLeftMessage, { username: trackedPlayer.username });
+          const message = results.find((r) => r);
+          if (message) {
+            for (const player of onlinePlayers.values()) {
+              if (player.uuid !== trackedPlayer.uuid) {
+                player.sendMessage(message);
+              }
+            }
+          }
           trackConnectionClose(trackedPlayer.uuid);
           playerSwitcher.delete(trackedPlayer.uuid);
         }
