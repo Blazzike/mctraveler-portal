@@ -8,10 +8,3 @@ export const playerInfoUpdatePacket = definePacket({
     data: restBuffer,
   },
 });
-
-export const spawnEntityPacket = definePacket({
-  id: 0x01,
-  fields: {
-    data: restBuffer,
-  },
-});
