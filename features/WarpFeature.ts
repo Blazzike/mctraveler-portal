@@ -119,9 +119,7 @@ export default defineFeature({
 
     registerCommand(syntax`warp ${syntax.string.rest('name')}`, ({ sender, args }) => {
       const name = args.name.toLowerCase();
-      const warp = warpsCache.warps.find(
-        (w) => w.name.toLowerCase() === name && (w.isPublic || w.ownerUuid === sender.uuid)
-      );
+      const warp = warpsCache.warps.find((w) => w.name.toLowerCase() === name && (w.isPublic || w.ownerUuid === sender.uuid));
 
       if (!warp) {
         return p.error`Warp "${args.name}" not found. Use /warp list to see available warps.`;
@@ -143,7 +141,7 @@ export default defineFeature({
       }
 
       const name = args.name;
-      if (!name.match(/^[a-zA-Z0-9_\-]{2,20}$/)) {
+      if (!name.match(/^[a-zA-Z0-9_-]{2,20}$/)) {
         return p.error`Invalid warp name. Use 2-20 alphanumeric characters.`;
       }
 
@@ -179,9 +177,7 @@ export default defineFeature({
 
     registerCommand(syntax`delwarp ${syntax.string.rest('name')}`, ({ sender, args }) => {
       const name = args.name.toLowerCase();
-      const index = warpsCache.warps.findIndex(
-        (w) => w.name.toLowerCase() === name && (w.ownerUuid === sender.uuid || isPlayerAdmin(sender.uuid))
-      );
+      const index = warpsCache.warps.findIndex((w) => w.name.toLowerCase() === name && (w.ownerUuid === sender.uuid || isPlayerAdmin(sender.uuid)));
 
       if (index === -1) {
         return p.error`Warp "${args.name}" not found or you don't have permission to delete it.`;
