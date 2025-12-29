@@ -60,7 +60,6 @@ const playerCurrentRegion = new WeakMap<OnlinePlayer, Region>();
 const playerScoreboardInitialized = new WeakSet<OnlinePlayer>();
 const playerPositions = new WeakMap<OnlinePlayer, { x: number; y: number; z: number }>();
 const regionStarts = new WeakMap<OnlinePlayer, { x: number; y: number; z: number; world: string; serverPort: number }>();
-const playersInAdventureMode = new WeakSet<OnlinePlayer>();
 const playerActualGameMode = new WeakMap<OnlinePlayer, number>(); // 0=Survival, 1=Creative, 2=Adventure, 3=Spectator
 const kRegionsPath = join(process.cwd(), 'regions.json');
 const kObjectiveName = 'region';
@@ -348,22 +347,10 @@ function setPlayerGameMode(player: OnlinePlayer, mode: number): void {
   safeWrite(socket, packet);
 }
 
-function updatePlayerProtectionMode(player: OnlinePlayer, region: Region | null): void {
-  const socket = getPlayerSocket(player);
-  if (!socket) return;
-
-  const actualGameMode = playerActualGameMode.get(player) ?? 0;
-  const wasInAdventureMode = playersInAdventureMode.has(player);
-  const shouldBeProtected = region !== null && !canModifyRegion(region, player);
-
-  // Only apply adventure mode protection if player is in survival mode
-  if (shouldBeProtected && !wasInAdventureMode && actualGameMode === 0) {
-    playersInAdventureMode.add(player);
-    setPlayerGameMode(player, 2); // Adventure mode
-  } else if (!shouldBeProtected && wasInAdventureMode) {
-    playersInAdventureMode.delete(player);
-    setPlayerGameMode(player, 0); // Restore to Survival mode
-  }
+function updatePlayerProtectionMode(_player: OnlinePlayer, _region: Region | null): void {
+  // Adventure mode was too restrictive - it blocked doors, gates, eating, etc.
+  // Now using packet-level interception via CheckBlockDigProtection and CheckBlockPlaceProtection hooks
+  // which allows normal gameplay while still protecting blocks from being broken/placed
 }
 
 function trackPlayerGameMode(player: OnlinePlayer, gameMode: number): void {
@@ -376,7 +363,7 @@ function trackPlayerGameMode(player: OnlinePlayer, gameMode: number): void {
 }
 
 function clearPlayerProtectionState(player: OnlinePlayer): void {
-  playersInAdventureMode.delete(player);
+  // Clean up tracking data (adventure mode no longer used)
   playerActualGameMode.delete(player);
 }
 
@@ -520,10 +507,8 @@ export default defineFeature({
     registerHook(FeatureHook.CheckEntityInteractProtection, ({ player, action, isHoldingItem }) => {
       const region = playerCurrentRegion.get(player);
       if (region && !canModifyRegion(region, player) && !region.flags.has('DISABLE_ANIMAL_PROTECTION')) {
-        if (action === 'attack') {
-          sendProtectionMessage(player, region.title);
-          return true;
-        }
+        // Don't block attacks - hostile mobs should always be attackable
+        // We can't distinguish entity types, so allow all attacks
         if ((action === 'interact' || action === 'interact_at') && isHoldingItem && !region.flags.has('ENABLE_PUBLIC_VILLAGER_TRADING')) {
           sendProtectionMessage(player, region.title);
           return true;
