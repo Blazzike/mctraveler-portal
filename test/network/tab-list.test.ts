@@ -15,6 +15,7 @@ function trackPlayerLogin(uuid: string, username: string, socket?: any) {
 
 describe('tab-list', () => {
   beforeEach(() => {
+    enableModule(OnlinePlayersModule);
     enableModule(TabListModule);
   });
 
