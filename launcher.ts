@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import blessed from 'blessed';
 import { type Subprocess, spawn } from 'bun';
+import { kIsProduction } from './config';
 
 const screen = blessed.screen({
   smartCSR: true,
@@ -247,12 +248,20 @@ function appendToBox(box: blessed.Widgets.BoxElement, text: string) {
   screen.render();
 }
 
-async function startProcess(command: string, args: string[], box: blessed.Widgets.BoxElement, name: string, cwd?: string) {
+async function startProcess(
+  command: string,
+  args: string[],
+  box: blessed.Widgets.BoxElement,
+  name: string,
+  cwd?: string,
+  env?: Record<string, string>
+) {
   const proc = spawn([command, ...args], {
     cwd: cwd || process.cwd(),
     stdout: 'pipe',
     stderr: 'pipe',
     stdin: 'pipe',
+    env: { ...process.env, ...env },
   });
 
   const processKey = name.toLowerCase().split(' ')[0] || name.toLowerCase();
@@ -313,6 +322,6 @@ appendToBox(primaryBox, '{cyan-fg}Initializing Primary Server...{/cyan-fg}');
 appendToBox(secondaryBox, '{cyan-fg}Initializing Secondary Server...{/cyan-fg}');
 appendToBox(proxyBox, '{cyan-fg}Initializing Proxy Server...{/cyan-fg}');
 
-startProcess('bun', ['minecraft:primary'], primaryBox, 'Primary Server');
-startProcess('bun', ['minecraft:secondary'], secondaryBox, 'Secondary Server');
-startProcess('bun', ['proxy:watch:node'], proxyBox, 'Proxy Server');
+startProcess('bun', ['minecraft:primary'], primaryBox, 'Primary Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
+startProcess('bun', ['minecraft:secondary'], secondaryBox, 'Secondary Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
+startProcess('bun', ['proxy:watch:node'], proxyBox, 'Proxy Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
