@@ -1,8 +1,7 @@
 #!/usr/bin/env bun
 import blessed from 'blessed';
-import { type Subprocess, spawn } from 'bun';
+import { $, type Subprocess, spawn } from 'bun';
 import { kIsProduction } from './config';
-import { $ } from 'bun';
 
 const screen = blessed.screen({
   smartCSR: true,
@@ -333,13 +332,13 @@ async function handleGitHubWebhook(req: Request): Promise<Response> {
   }
 
   try {
-    const payload = await req.json() as { ref?: string };
+    const payload = (await req.json()) as { ref?: string };
     const ref = payload.ref;
-    
+
     if (ref === 'refs/heads/main') {
       appendToBox(proxyBox, '{magenta-fg}[Webhook] Push to main detected, pulling changes...{/magenta-fg}');
       screen.render();
-      
+
       try {
         const result = await $`git pull`.text();
         appendToBox(proxyBox, `{magenta-fg}[Webhook] Git pull: ${result.trim()}{/magenta-fg}`);
@@ -353,9 +352,11 @@ async function handleGitHubWebhook(req: Request): Promise<Response> {
         return new Response('Git pull failed', { status: 500 });
       }
     }
-    
+
     return new Response('OK - ignored (not main branch)', { status: 200 });
   } catch (e) {
+    console.error('Error handling webhook:', e);
+
     return new Response('Invalid payload', { status: 400 });
   }
 }
