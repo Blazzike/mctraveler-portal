@@ -2,6 +2,7 @@
 import blessed from 'blessed';
 import { type Subprocess, spawn } from 'bun';
 import { kIsProduction } from './config';
+import { $ } from 'bun';
 
 const screen = blessed.screen({
   smartCSR: true,
@@ -315,6 +316,59 @@ async function startProcess(
   }
 }
 
+async function restartProxy() {
+  const proc = processes.get('proxy');
+  if (proc) {
+    appendToBox(proxyBox, '{yellow-fg}Restarting proxy...{/yellow-fg}');
+    proc.kill('SIGTERM');
+    await proc.exited;
+    processes.delete('proxy');
+  }
+  startProcess('bun', [kIsProduction ? 'proxy:node' : 'proxy:watch'], proxyBox, 'Proxy Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
+}
+
+async function handleGitHubWebhook(req: Request): Promise<Response> {
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  try {
+    const payload = await req.json() as { ref?: string };
+    const ref = payload.ref;
+    
+    if (ref === 'refs/heads/main') {
+      appendToBox(proxyBox, '{magenta-fg}[Webhook] Push to main detected, pulling changes...{/magenta-fg}');
+      screen.render();
+      
+      try {
+        const result = await $`git pull`.text();
+        appendToBox(proxyBox, `{magenta-fg}[Webhook] Git pull: ${result.trim()}{/magenta-fg}`);
+        appendToBox(proxyBox, '{magenta-fg}[Webhook] Restarting proxy...{/magenta-fg}');
+        screen.render();
+        await restartProxy();
+        return new Response('OK - pulled and restarted proxy', { status: 200 });
+      } catch (e) {
+        appendToBox(proxyBox, `{red-fg}[Webhook] Git pull failed: ${e}{/red-fg}`);
+        screen.render();
+        return new Response('Git pull failed', { status: 500 });
+      }
+    }
+    
+    return new Response('OK - ignored (not main branch)', { status: 200 });
+  } catch (e) {
+    return new Response('Invalid payload', { status: 400 });
+  }
+}
+
+if (kIsProduction) {
+  const webhookPort = 9000;
+  Bun.serve({
+    port: webhookPort,
+    fetch: handleGitHubWebhook,
+  });
+  appendToBox(proxyBox, `{magenta-fg}[Webhook] GitHub webhook URL: http://localhost:${webhookPort}/{/magenta-fg}`);
+}
+
 primaryBox.focus();
 screen.render();
 
@@ -324,4 +378,4 @@ appendToBox(proxyBox, '{cyan-fg}Initializing Proxy Server...{/cyan-fg}');
 
 startProcess('bun', ['minecraft:primary'], primaryBox, 'Primary Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
 startProcess('bun', ['minecraft:secondary'], secondaryBox, 'Secondary Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
-startProcess('bun', ['proxy:watch:node'], proxyBox, 'Proxy Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
+startProcess('bun', [kIsProduction ? 'proxy:node' : 'proxy:watch'], proxyBox, 'Proxy Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
