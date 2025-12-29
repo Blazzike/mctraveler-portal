@@ -248,7 +248,14 @@ function appendToBox(box: blessed.Widgets.BoxElement, text: string) {
   screen.render();
 }
 
-async function startProcess(command: string, args: string[], box: blessed.Widgets.BoxElement, name: string, cwd?: string, env?: Record<string, string>) {
+async function startProcess(
+  command: string,
+  args: string[],
+  box: blessed.Widgets.BoxElement,
+  name: string,
+  cwd?: string,
+  env?: Record<string, string>
+) {
   const proc = spawn([command, ...args], {
     cwd: cwd || process.cwd(),
     stdout: 'pipe',
