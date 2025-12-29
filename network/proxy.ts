@@ -21,6 +21,7 @@ import { executeCommand } from '@/feature-api/command';
 import { executeHook, executeHookFirst, FeatureHook, registerHook } from '@/feature-api/manager';
 import p from '@/feature-api/paint';
 import { notifyPlayerJoin, notifyPlayerLeave } from '@/module-api/module';
+import PersistenceModule from '@/modules/PersistenceModule';
 import { readPacketFields, writePacket } from '@/network/defined-packet';
 import { enableEncryption, generateServerKeyPair, rsaDecrypt, type ServerKeyPair } from '@/network/encryption';
 import { handleProxyQuery } from '@/network/handle-proxy-query';
@@ -113,7 +114,6 @@ const playerSockets = new WeakMap<OnlinePlayer, net.Socket>();
 const serverSockets = new WeakMap<OnlinePlayer, net.Socket>();
 const playerHeldSlots = new WeakMap<OnlinePlayer, number>();
 const playerPositions = new WeakMap<OnlinePlayer, { x: number; y: number; z: number }>();
-const playerLastServer = new Map<string, 'primary' | 'secondary'>();
 
 interface OnlinePlayer {
   uuid: string;
@@ -181,7 +181,6 @@ function trackConnectionClose(uuid: string): void {
   if (player) {
     console.log(`[- player] ${player.username}`);
     onlinePlayers.delete(uuid);
-    playerLastServer.delete(uuid);
     executeHook(FeatureHook.ClearServerSwitcher, { uuid });
     executeHook(FeatureHook.PlayerLeave, { player });
     executeHook(FeatureHook.TrackPlayerLogout, { uuid });
@@ -305,11 +304,11 @@ function _broadcastLeaveMessage(username: string): void {
 }
 
 function getPlayerLastServerName(uuid: string): 'primary' | 'secondary' | undefined {
-  return playerLastServer.get(uuid);
+  return PersistenceModule.api.getPlayerLastServerName(uuid);
 }
 
 function setPlayerLastServerName(uuid: string, server: 'primary' | 'secondary'): void {
-  playerLastServer.set(uuid, server);
+  PersistenceModule.api.setPlayerLastServerName(uuid, server);
 }
 
 async function syncPlayerData(uuid: string, fromPort: number, toPort: number): Promise<void> {
