@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { join, resolve } from 'node:path';
 import dedent from 'dedent';
-import { kProtocolVersionString } from './config';
+import { kIsProduction, kProtocolVersionString } from './config';
 
 type ServerType = 'primary' | 'secondary';
 
@@ -199,11 +199,35 @@ async function startMinecraftServer(javaPath: string, serverJarPath: string, por
   console.log(`Server jar: ${absoluteServerJarPath}`);
   console.log(`Working directory: ${absoluteServerDir}`);
 
-  const isProduction = process.env.PRODUCTION === '1';
-  const memorySize = isProduction ? '3G' : '1G';
-  console.log(`Memory: ${memorySize} (${isProduction ? 'production' : 'development'})`);
+  const memorySize = '8G';
+  console.log(`Memory: ${memorySize} (Mode: ${kIsProduction ? 'production' : 'development'})`);
 
-  const serverProcess = Bun.spawn([absoluteJavaPath, `-Xmx${memorySize}`, `-Xms${memorySize}`, '-jar', absoluteServerJarPath, 'nogui'], {
+  const serverProcess = Bun.spawn([
+    absoluteJavaPath,
+    `-Xmx${memorySize}`,
+    `-Xms${memorySize}`,
+    '-XX:+UseG1GC',
+    '-XX:+ParallelRefProcEnabled',
+    '-XX:MaxGCPauseMillis=200',
+    '-XX:+UnlockExperimentalVMOptions',
+    '-XX:+DisableExplicitGC',
+    '-XX:+AlwaysPreTouch',
+    '-XX:G1NewSizePercent=30',
+    '-XX:G1MaxNewSizePercent=40',
+    '-XX:G1HeapRegionSize=8M',
+    '-XX:G1ReservePercent=20',
+    '-XX:G1HeapWastePercent=5',
+    '-XX:G1MixedGCCountTarget=4',
+    '-XX:InitiatingHeapOccupancyPercent=15',
+    '-XX:G1MixedGCLiveThresholdPercent=90',
+    '-XX:G1RSetUpdatingPauseTimePercent=5',
+    '-XX:SurvivorRatio=32',
+    '-XX:+PerfDisableSharedMem',
+    '-XX:MaxTenuringThreshold=1',
+    '-jar',
+    absoluteServerJarPath,
+    'nogui',
+  ], {
     cwd: absoluteServerDir,
     stdin: 'inherit',
     stdout: 'inherit',
