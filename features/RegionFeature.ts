@@ -770,16 +770,17 @@ ${p.green('/rg end')}`;
         return p.error`Regions may only be created on the same server. Use /rg start again.`;
       }
 
-      const dx = Math.abs(start.x - end.x);
-      const dz = Math.abs(start.z - end.z);
-      const distance = Math.sqrt(dx * dx + dz * dz);
+      // +1 because block coordinates are inclusive (e.g. 10 to 12 is 10, 11, 12 = 3 blocks)
+      const dx = Math.abs(start.x - end.x) + 1;
+      const dz = Math.abs(start.z - end.z) + 1;
+      const area = dx * dz;
 
-      if (distance <= 3) {
+      if (area <= 9) {
         return p.error`Region too small`;
       }
 
-      if (distance >= 15 && !isPlayerAdmin(sender.uuid)) {
-        return p.error`Region too large. Ask an admin to create it.`;
+      if (area > 5000 && !isPlayerAdmin(sender.uuid)) {
+        return p.error`Region too large (${area} blocks). Limit is 5000 blocks. Ask an admin to create it.`;
       }
 
       const world = currentWorld;
