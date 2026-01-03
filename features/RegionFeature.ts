@@ -780,7 +780,7 @@ ${p.green('/rg end')}`;
       }
 
       if (area > 5000 && !isPlayerAdmin(sender.uuid)) {
-        return p.error`Region too large (${area} blocks). Limit is 5000 blocks. Ask an admin to create it.`;
+        return p.error`Region too large (${Math.floor(area)} blocks). Limit is 5000 blocks. Ask an admin to create it.`;
       }
 
       const world = currentWorld;
