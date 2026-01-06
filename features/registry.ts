@@ -2,6 +2,7 @@ import AdminFeature from './AdminFeature';
 import AwayFeature from './AwayFeature';
 import ChatFeature from './ChatFeature';
 import CoreFeature from './CoreFeature';
+import EconomyFeature from './EconomyFeature';
 import MotdFeature from './MotdFeature';
 import NotepadFeature from './NotepadFeature';
 import RegionFeature from './RegionFeature';
@@ -18,6 +19,7 @@ export default [
   TabListFeature,
   NotepadFeature,
   RegionFeature,
+  EconomyFeature,
   TravelPatchFeature,
   AdminFeature,
 ];
