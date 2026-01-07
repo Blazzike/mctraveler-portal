@@ -293,6 +293,13 @@ function flushPendingJoinMessages(): void {
   }
 }
 
+function removePendingJoinMessage(username: string): void {
+  const index = pendingJoinMessages.indexOf(username);
+  if (index !== -1) {
+    pendingJoinMessages.splice(index, 1);
+  }
+}
+
 function _broadcastLeaveMessage(username: string): void {
   const results = executeHook(FeatureHook.PlayerLeftMessage, { username });
   const message = results.find((r) => r);
@@ -1234,6 +1241,8 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
 
       clientSocket.on('close', () => {
         if (trackedPlayer) {
+          // Remove pending join message if player disconnected before reaching play state
+          removePendingJoinMessage(trackedPlayer.username);
           trackConnectionClose(trackedPlayer.uuid);
           playerSwitcher.delete(trackedPlayer.uuid);
         }
