@@ -204,6 +204,90 @@ function setPlayerDimensionByName(player: OnlinePlayer, dimension: string): void
   player.currentDimension = dimension;
 }
 
+function mapDimensionNameForSecondary(dimensionName: string): string {
+  switch (dimensionName) {
+    case 'minecraft:overworld':
+      return 'minecraft:last';
+    case 'minecraft:the_nether':
+      return 'minecraft:last_nether';
+    default:
+      return dimensionName;
+  }
+}
+
+function rewriteDimensionNameInPacket(packetData: Buffer, isJoinGame: boolean, isSecondary: boolean): Buffer {
+  if (!isSecondary) return packetData;
+
+  try {
+    const data = Buffer.from(packetData);
+    let offset = 0;
+
+    if (isJoinGame) {
+      offset += 4; // entityId
+      offset += 1; // isHardcore
+      let b = 0;
+      let arrayCount = 0;
+      let shift = 0;
+      do {
+        b = data[offset++] ?? 0;
+        arrayCount |= (b & 0x7f) << shift;
+        shift += 7;
+      } while ((b & 0x80) !== 0);
+      for (let i = 0; i < arrayCount; i++) {
+        let strLen = 0;
+        shift = 0;
+        do {
+          b = data[offset++] ?? 0;
+          strLen |= (b & 0x7f) << shift;
+          shift += 7;
+        } while ((b & 0x80) !== 0);
+        offset += strLen;
+      }
+      for (let i = 0; i < 3; i++) {
+        do {
+          b = data[offset++] ?? 0;
+        } while ((b & 0x80) !== 0);
+      }
+      offset += 3;
+    }
+
+    // Skip dimension type (varint)
+    const dimTypeStart = offset;
+    let b = 0;
+    do {
+      b = data[offset++] ?? 0;
+    } while ((b & 0x80) !== 0);
+
+    // Read dimension name string length
+    const nameStart = offset;
+    let nameLen = 0;
+    let shift = 0;
+    do {
+      b = data[offset++] ?? 0;
+      nameLen |= (b & 0x7f) << shift;
+      shift += 7;
+    } while ((b & 0x80) !== 0);
+    const nameLenEnd = offset;
+
+    const originalName = data.subarray(offset, offset + nameLen).toString('utf8');
+    const newName = mapDimensionNameForSecondary(originalName);
+
+    if (newName === originalName) return packetData;
+
+    // Rebuild packet with new dimension name
+    const newNameBuf = Buffer.from(newName, 'utf8');
+    const newNameLenBuf = varInt(newNameBuf.length);
+
+    const before = data.subarray(0, nameStart);
+    const after = data.subarray(offset + nameLen);
+
+    return Buffer.concat([before, newNameLenBuf, newNameBuf, after]);
+  } catch (e) {
+    console.error('[Dimension] Failed to rewrite dimension name:', e);
+    return packetData;
+  }
+}
+
 function parsePlayerMovement(player: OnlinePlayer, packetId: number, packetData: Buffer): void {
   if (packetId === playerPositionPacket.id || packetId === playerPositionLookPacket.id) {
     const x = double.read(packetData);
@@ -947,12 +1031,15 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
               }
 
               // Track dimension changes from Join Game and Respawn packets
+              // Also rewrite dimension name for secondary server (for minimap mods)
               if ((packet.packetId === joinGamePacket.id || packet.packetId === respawnPacket.id) && trackedPlayer) {
                 try {
+                  const isSecondary = currentBackendPort === kSecondaryPort;
+                  const isJoinGame = packet.packetId === joinGamePacket.id;
                   const data = packet.packetData;
                   let offset = 0;
 
-                  if (packet.packetId === joinGamePacket.id) {
+                  if (isJoinGame) {
                     offset += 4; // entityId
                     offset += 1; // isHardcore
                     let b = 0;
@@ -997,13 +1084,24 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                   } while ((b & 0x80) !== 0);
 
                   const dimensionName = data.subarray(offset, offset + nameLen).toString('utf8');
-                  setPlayerDimensionByName(trackedPlayer, dimensionName);
+                  const mappedDimension = isSecondary ? mapDimensionNameForSecondary(dimensionName) : dimensionName;
+                  setPlayerDimensionByName(trackedPlayer, mappedDimension);
                   offset += nameLen;
 
                   // SpawnInfo: hashedSeed (i64 = 8 bytes) + gamemode (i8)
                   offset += 8; // Skip hashedSeed
                   const gameMode = data.readInt8(offset);
                   executeHook(FeatureHook.PlayerGameModeChange, { player: trackedPlayer, gameMode });
+
+                  // Rewrite and forward packet with modified dimension name for secondary
+                  if (isSecondary && mappedDimension !== dimensionName) {
+                    const rewrittenData = rewriteDimensionNameInPacket(packet.packetData, isJoinGame, isSecondary);
+                    const packetIdBuf = varInt(packet.packetId);
+                    const packetContent = Buffer.concat([packetIdBuf, rewrittenData]);
+                    const fullPacket = Buffer.concat([varInt(packetContent.length), packetContent]);
+                    safeWrite(clientSocket, fullPacket);
+                    return;
+                  }
                 } catch (e) {
                   console.error('[Dimension] Failed to parse dimension:', e);
                 }
