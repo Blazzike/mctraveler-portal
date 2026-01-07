@@ -22,6 +22,7 @@ import { executeHook, executeHookFirst, FeatureHook, registerHook } from '@/feat
 import p from '@/feature-api/paint';
 import { notifyPlayerJoin, notifyPlayerLeave } from '@/module-api/module';
 import PersistenceModule from '@/modules/PersistenceModule';
+import SyncModule from '@/modules/SyncModule';
 import { readPacketFields, writePacket } from '@/network/defined-packet';
 import { enableEncryption, generateServerKeyPair, rsaDecrypt, type ServerKeyPair } from '@/network/encryption';
 import { handleProxyQuery } from '@/network/handle-proxy-query';
@@ -312,7 +313,7 @@ function setPlayerLastServerName(uuid: string, server: 'primary' | 'secondary'):
 }
 
 async function syncPlayerData(uuid: string, fromPort: number, toPort: number): Promise<void> {
-  console.log(`[Sync] Would sync ${uuid} from ${fromPort} to ${toPort}`);
+  await SyncModule.api.syncPlayerData(uuid, fromPort, toPort);
 }
 
 function parseLoginStart(packetData: Buffer): { username: string; uuid: string | null } {
@@ -797,14 +798,7 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                     console.log(`[Skin] Storing ${props.length} properties for UUID ${pendingClientLogin.uuid}`);
                     executeHook(FeatureHook.SetProfileProperties, { uuid: pendingClientLogin.uuid, props });
 
-                    trackedPlayer = trackPlayerLogin(
-                      pendingClientLogin.uuid,
-                      pendingClientLogin.username,
-                      clientSocket,
-                      currentBackendPort,
-                      false,
-                      clientIp
-                    );
+                    trackedPlayer = trackPlayerLogin(pendingClientLogin.uuid, pendingClientLogin.username, clientSocket, currentBackendPort, true);
                     trackServerSocket(trackedPlayer, serverSocket);
 
                     setPlayerLastServerName(trackedPlayer.uuid, currentBackendPort === kSecondaryPort ? 'secondary' : 'primary');
@@ -849,7 +843,7 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                     return;
                   } else {
                     // Offline mode - backend Login Success goes to client
-                    trackedPlayer = trackPlayerLogin(loginData.uuid, loginData.username, clientSocket, currentBackendPort, false, clientIp);
+                    trackedPlayer = trackPlayerLogin(loginData.uuid, loginData.username, clientSocket, currentBackendPort, false);
                     trackServerSocket(trackedPlayer, serverSocket);
 
                     setPlayerLastServerName(trackedPlayer.uuid, currentBackendPort === kSecondaryPort ? 'secondary' : 'primary');
@@ -1106,7 +1100,9 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
               // Generate server ID and verify with Mojang
               const serverId = generateServerId(sharedSecret, serverKeyPair.publicKey);
 
-              const profile = await verifyMojangSession(pendingLogin.username, serverId, clientIp);
+              // Don't pass IP for local connections - Mojang would reject them
+              const isLocalIp = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp?.startsWith('192.168.') || clientIp?.startsWith('10.');
+              const profile = await verifyMojangSession(pendingLogin.username, serverId, isLocalIp ? undefined : clientIp);
 
               if (!profile) {
                 const disconnectPacket = createLoginDisconnect(
