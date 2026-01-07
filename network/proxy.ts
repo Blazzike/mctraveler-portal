@@ -798,13 +798,7 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                     console.log(`[Skin] Storing ${props.length} properties for UUID ${pendingClientLogin.uuid}`);
                     executeHook(FeatureHook.SetProfileProperties, { uuid: pendingClientLogin.uuid, props });
 
-                    trackedPlayer = trackPlayerLogin(
-                      pendingClientLogin.uuid,
-                      pendingClientLogin.username,
-                      clientSocket,
-                      currentBackendPort,
-                      true
-                    );
+                    trackedPlayer = trackPlayerLogin(pendingClientLogin.uuid, pendingClientLogin.username, clientSocket, currentBackendPort, true);
                     trackServerSocket(trackedPlayer, serverSocket);
 
                     setPlayerLastServerName(trackedPlayer.uuid, currentBackendPort === kSecondaryPort ? 'secondary' : 'primary');
