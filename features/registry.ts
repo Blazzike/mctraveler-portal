@@ -8,6 +8,7 @@ import RegionFeature from './RegionFeature';
 import SwitchFeature from './SwitchFeature';
 import TabListFeature from './TabListFeature';
 import TravelPatchFeature from './TravelPatchFeature';
+import WarpFeature from './WarpFeature';
 
 export default [
   CoreFeature,
@@ -18,6 +19,7 @@ export default [
   TabListFeature,
   NotepadFeature,
   RegionFeature,
+  WarpFeature,
   TravelPatchFeature,
   AdminFeature,
 ];
