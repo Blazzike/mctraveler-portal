@@ -174,6 +174,7 @@ async function setupServerFiles(serverDir: string, port: number): Promise<void> 
       network-compression-threshold=-1
       enforce-secure-profile=false
       server-port=${port}
+      level-name=${port === 25567 ? 'last' : 'world'}
     `;
 
     await Bun.write(serverPropertiesPath, serverProperties);

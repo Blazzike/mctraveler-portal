@@ -13,7 +13,8 @@ function getServerDir(port: number): string {
 }
 
 function getPlayerDataPath(port: number, uuid: string): string {
-  return join(getServerDir(port), 'world', 'playerdata', `${uuid}.dat`);
+  const worldDir = port === 25567 ? 'last' : 'world';
+  return join(getServerDir(port), worldDir, 'playerdata', `${uuid}.dat`);
 }
 
 const SYNC_TAGS = [
