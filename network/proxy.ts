@@ -181,11 +181,18 @@ function trackConnectionClose(uuid: string): void {
   const player = onlinePlayers.get(uuid);
   if (player) {
     console.log(`[- player] ${player.username}`);
+    // Remove any pending join message for this player (in case they failed to fully connect)
+    const pendingIndex = pendingJoinMessages.indexOf(player.username);
+    if (pendingIndex !== -1) {
+      pendingJoinMessages.splice(pendingIndex, 1);
+    }
     onlinePlayers.delete(uuid);
     executeHook(FeatureHook.ClearServerSwitcher, { uuid });
     executeHook(FeatureHook.PlayerLeave, { player });
     executeHook(FeatureHook.TrackPlayerLogout, { uuid });
     notifyPlayerLeave(player);
+    broadcastPlayerLeave(uuid);
+    broadcastLeaveMessage(player.username);
   }
 }
 
@@ -294,7 +301,7 @@ function flushPendingJoinMessages(): void {
   }
 }
 
-function _broadcastLeaveMessage(username: string): void {
+function broadcastLeaveMessage(username: string): void {
   const results = executeHook(FeatureHook.PlayerLeftMessage, { username });
   const message = results.find((r) => r);
   if (message) {
@@ -760,7 +767,13 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                       }
                     }
 
-                    // Switch complete
+                    // Switch complete - refresh tablist for switching player and broadcast to others
+                    if (trackedPlayer) {
+                      sendGlobalTabList(trackedPlayer);
+                      sendTabListHeaderFooter(trackedPlayer);
+                      // Broadcast this player to all OTHER players (they may have stale data)
+                      broadcastPlayerJoin(trackedPlayer.uuid, trackedPlayer.username, trackedPlayer.uuid);
+                    }
                     isSwitching = false;
                   } catch (error) {
                     console.error('[Switch] Failed to apply dimension trick:', error);
