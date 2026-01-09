@@ -11,6 +11,7 @@ const screen = blessed.screen({
 
 const processes: Map<string, Subprocess> = new Map();
 let isShuttingDown = false;
+let isRestartingProxy = false;
 let _hasError = false;
 let focusedPane: 'primary' | 'secondary' | 'proxy' = 'primary';
 
@@ -299,14 +300,14 @@ async function startProcess(
   if (proc.stderr) processOutput(proc.stderr, true);
 
   const exitCode = await proc.exited;
-  if (!isShuttingDown) {
+  if (!isShuttingDown && !isRestartingProxy) {
     _hasError = true;
     appendToBox(box, `{red-fg}${name} exited with code ${exitCode}{/red-fg}`);
     appendToBox(box, `{yellow-fg}Service crashed. Stopping all services...{/yellow-fg}`);
     helpBar.setContent(' {red-fg}ERROR: A service crashed! Stopping others... Press Q twice to exit.{/red-fg} ');
     screen.render();
     killAllProcesses();
-  } else {
+  } else if (isShuttingDown) {
     if (exitCode === 0 || exitCode === 143) {
       appendToBox(box, `{green-fg}${name} stopped cleanly (exit code ${exitCode}){/green-fg}`);
     } else {
@@ -319,9 +320,11 @@ async function restartProxy() {
   const proc = processes.get('proxy');
   if (proc) {
     appendToBox(proxyBox, '{yellow-fg}Restarting proxy...{/yellow-fg}');
+    isRestartingProxy = true;
     proc.kill('SIGTERM');
     await proc.exited;
     processes.delete('proxy');
+    isRestartingProxy = false;
   }
   startProcess('bun', [kIsProduction ? 'proxy:node' : 'proxy:watch'], proxyBox, 'Proxy Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
 }

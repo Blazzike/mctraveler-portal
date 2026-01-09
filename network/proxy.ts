@@ -481,7 +481,7 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
           if (serverSocket) {
             serverSocket.removeAllListeners();
             serverSocket.end();
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 2000));
           }
           await syncPlayerData(trackedPlayer.offlineUuid, currentBackendPort, targetPort);
         } else {
