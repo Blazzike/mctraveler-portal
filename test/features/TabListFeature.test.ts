@@ -12,13 +12,13 @@ describe('TabListFeature', () => {
     reset();
   });
 
-  test('returns header with MCTraveler Portal', () => {
+  test('returns header with MCTraveler', () => {
     const results = executeHook(FeatureHook.TabListHeaderRequest);
 
     expect(results).toHaveLength(1);
     const header = results[0];
     expect(header).toBeDefined();
-    expect(header.toLegacyString()).toContain('MCTraveler Portal');
+    expect(header.toLegacyString()).toContain('MCTraveler');
   });
 
   test('returns footer with play.mctraveler.eu', () => {
