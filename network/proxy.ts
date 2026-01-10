@@ -81,12 +81,14 @@ function sendGlobalTabList(targetPlayer: any) {
   const players = executeHookFirst<OnlinePlayer[]>(FeatureHook.GetOnlinePlayers) || [];
   if (players.length === 0) return;
 
+  const socket = getPlayerSocket(targetPlayer);
+  if (!socket) return;
+
   for (const player of players) {
     const props = executeHookFirst(FeatureHook.GetProfileProperties, { uuid: player.uuid }) || [];
     const packet = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, { uuid: player.uuid, username: player.username, props });
 
-    const socket = getPlayerSocket(targetPlayer);
-    if (socket && packet && (socket.readyState === 'open' || socket.readyState === 'writeOnly')) {
+    if (packet && (socket.readyState === 'open' || socket.readyState === 'writeOnly')) {
       try {
         socket.write(packet);
       } catch {
@@ -181,11 +183,18 @@ function trackConnectionClose(uuid: string): void {
   const player = onlinePlayers.get(uuid);
   if (player) {
     console.log(`[- player] ${player.username}`);
+    // Remove any pending join message for this player (in case they failed to fully connect)
+    const pendingIndex = pendingJoinMessages.indexOf(player.username);
+    if (pendingIndex !== -1) {
+      pendingJoinMessages.splice(pendingIndex, 1);
+    }
     onlinePlayers.delete(uuid);
     executeHook(FeatureHook.ClearServerSwitcher, { uuid });
     executeHook(FeatureHook.PlayerLeave, { player });
     executeHook(FeatureHook.TrackPlayerLogout, { uuid });
     notifyPlayerLeave(player);
+    broadcastPlayerLeave(uuid);
+    broadcastLeaveMessage(player.username);
   }
 }
 
@@ -294,7 +303,7 @@ function flushPendingJoinMessages(): void {
   }
 }
 
-function _broadcastLeaveMessage(username: string): void {
+function broadcastLeaveMessage(username: string): void {
   const results = executeHook(FeatureHook.PlayerLeftMessage, { username });
   const message = results.find((r) => r);
   if (message) {
@@ -551,6 +560,11 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                     const existingUuid = trackedPlayer.uuid;
                     const existingUsername = trackedPlayer.username;
                     const oldPlayer = trackedPlayer;
+
+                    // Clean up old player references before creating new one
+                    playerSockets.delete(oldPlayer);
+                    serverSockets.delete(oldPlayer);
+
                     trackedPlayer = trackPlayerLogin(existingUuid, existingUsername, clientSocket, targetPort, true);
                     trackServerSocket(trackedPlayer, serverSocket);
 
@@ -760,7 +774,32 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                       }
                     }
 
-                    // Switch complete
+                    // Switch complete - refresh tablist for switching player and broadcast to others
+                    if (trackedPlayer) {
+                      const playerForTabList = trackedPlayer;
+                      const socketForTabList = clientSocket;
+
+                      // Delay tab list sending to ensure client has processed the dimension switch
+                      setTimeout(() => {
+                        if (!playerForTabList || socketForTabList.destroyed) return;
+
+                        // Send the player their own info first (so they see themselves)
+                        const selfProps = executeHookFirst(FeatureHook.GetProfileProperties, { uuid: playerForTabList.uuid }) || [];
+                        const selfPacket = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, {
+                          uuid: playerForTabList.uuid,
+                          username: playerForTabList.username,
+                          props: selfProps,
+                        });
+                        if (selfPacket) {
+                          safeWrite(socketForTabList, selfPacket);
+                        }
+
+                        sendGlobalTabList(playerForTabList);
+                        sendTabListHeaderFooter(playerForTabList);
+                        // Broadcast this player to all OTHER players (they may have stale data)
+                        broadcastPlayerJoin(playerForTabList.uuid, playerForTabList.username, playerForTabList.uuid);
+                      }, 100);
+                    }
                     isSwitching = false;
                   } catch (error) {
                     console.error('[Switch] Failed to apply dimension trick:', error);
@@ -867,20 +906,7 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                 if (packet.packetId === 0x03) {
                   isConfigurationState = false;
                   isPlayState = true;
-
-                  // Forward the Finish Configuration packet first so the client transitions to Play state
                   forwardPacket(clientSocket, packet);
-
-                  // Now that client is in Play state, send tab list and header/footer
-                  if (trackedPlayer) {
-                    sendGlobalTabList(trackedPlayer);
-                    sendTabListHeaderFooter(trackedPlayer);
-                    // Broadcast this player's join to all OTHER players
-                    broadcastPlayerJoin(trackedPlayer.uuid, trackedPlayer.username, trackedPlayer.uuid);
-
-                    // Flush any pending join messages now that we're in play state
-                    flushPendingJoinMessages();
-                  }
                   return;
                 }
               }
@@ -940,40 +966,44 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                 }
               }
 
-              // Track dimension changes from Join Game and Respawn packets
-              if ((packet.packetId === joinGamePacket.id || packet.packetId === respawnPacket.id) && trackedPlayer) {
+              // After Join Game packet, send tab list for players on other servers
+              if (packet.packetId === joinGamePacket.id && trackedPlayer) {
+                forwardPacket(clientSocket, packet);
+
+                // Delay tab list sending to ensure client has processed Join Game
+                const playerForTabList = trackedPlayer;
+                const socketForTabList = clientSocket;
+                setTimeout(() => {
+                  if (!playerForTabList || socketForTabList.destroyed) return;
+
+                  // Send tab list info for all online players (including self)
+                  const selfProps = executeHookFirst(FeatureHook.GetProfileProperties, { uuid: playerForTabList.uuid }) || [];
+                  const selfPacket = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, {
+                    uuid: playerForTabList.uuid,
+                    username: playerForTabList.username,
+                    props: selfProps,
+                  });
+                  if (selfPacket) {
+                    safeWrite(socketForTabList, selfPacket);
+                  }
+
+                  sendGlobalTabList(playerForTabList);
+                  sendTabListHeaderFooter(playerForTabList);
+
+                  // Broadcast this player's join to all OTHER players
+                  broadcastPlayerJoin(playerForTabList.uuid, playerForTabList.username, playerForTabList.uuid);
+
+                  // Flush any pending join messages
+                  flushPendingJoinMessages();
+                }, 100);
+                return;
+              }
+
+              // Track dimension changes from Respawn packets
+              if (packet.packetId === respawnPacket.id && trackedPlayer) {
                 try {
                   const data = packet.packetData;
                   let offset = 0;
-
-                  if (packet.packetId === joinGamePacket.id) {
-                    offset += 4; // entityId
-                    offset += 1; // isHardcore
-                    let b = 0;
-                    let arrayCount = 0;
-                    let shift = 0;
-                    do {
-                      b = data[offset++] ?? 0;
-                      arrayCount |= (b & 0x7f) << shift;
-                      shift += 7;
-                    } while ((b & 0x80) !== 0);
-                    for (let i = 0; i < arrayCount; i++) {
-                      let strLen = 0;
-                      shift = 0;
-                      do {
-                        b = data[offset++] ?? 0;
-                        strLen |= (b & 0x7f) << shift;
-                        shift += 7;
-                      } while ((b & 0x80) !== 0);
-                      offset += strLen;
-                    }
-                    for (let i = 0; i < 3; i++) {
-                      do {
-                        b = data[offset++] ?? 0;
-                      } while ((b & 0x80) !== 0);
-                    }
-                    offset += 3;
-                  }
 
                   // Skip dimension type (varint)
                   let b = 0;

@@ -12,22 +12,22 @@ describe('TabListFeature', () => {
     reset();
   });
 
-  test('returns header with MCTraveler Portal', () => {
+  test('returns header with MCTraveler', () => {
     const results = executeHook(FeatureHook.TabListHeaderRequest);
 
     expect(results).toHaveLength(1);
     const header = results[0];
     expect(header).toBeDefined();
-    expect(header.toLegacyString()).toContain('MCTraveler Portal');
+    expect(header.toLegacyString()).toContain('MCTraveler');
   });
 
-  test('returns footer with mctraveler.dev', () => {
+  test('returns footer with play.mctraveler.eu', () => {
     const results = executeHook(FeatureHook.TabListFooterRequest);
 
     expect(results).toHaveLength(1);
     const footer = results[0];
     expect(footer).toBeDefined();
-    expect(footer.toLegacyString()).toContain('mctraveler.dev');
+    expect(footer.toLegacyString()).toContain('play.mctraveler.eu');
   });
 
   test('header has correct formatting', () => {

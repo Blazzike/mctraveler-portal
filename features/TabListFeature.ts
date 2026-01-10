@@ -4,7 +4,7 @@ import p from '@/feature-api/paint';
 export default defineFeature({
   name: 'TabList',
   onEnable: () => {
-    registerHook(FeatureHook.TabListHeaderRequest, () => p`             ${p.green('MCTraveler Portal')}             \n`);
-    registerHook(FeatureHook.TabListFooterRequest, () => p`\n${p.gray('           mctraveler.dev           ')}`);
+    registerHook(FeatureHook.TabListHeaderRequest, () => p`             ${p.green('MCTraveler')}             \n`);
+    registerHook(FeatureHook.TabListFooterRequest, () => p`\n${p.gray('          play.mctraveler.eu          ')}`);
   },
 });

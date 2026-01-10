@@ -1,4 +1,3 @@
-import { kSecondaryPort } from '@/config';
 import {
   acknowledgePlayerDiggingPacket,
   closeWindowClientPacket,
@@ -18,6 +17,7 @@ import OnlinePlayersModule, { type OnlinePlayer } from '@/modules/OnlinePlayersM
 import { writePacket } from '@/network/defined-packet';
 import { onClientToServerPacket, onServerToClientPacket } from '@/network/packet-handlers';
 import type { LazilyParsedPacket } from '@/network/types';
+import { getWorldForPlayer } from '@/util/world';
 
 export interface ProtectionCheckData {
   player: OnlinePlayer;
@@ -50,17 +50,6 @@ function decodeBlockPosition(buffer: Buffer, offset: number): { x: number; y: nu
   if (y >= 0x800) y -= 0x1000;
 
   return { x, y, z };
-}
-
-function getWorldForPlayer(player: OnlinePlayer): string {
-  const base = player.currentServerPort === kSecondaryPort ? 'last' : 'world';
-  if (player.currentDimension === 'nether') {
-    return `${base}_nether`;
-  }
-  if (player.currentDimension === 'end') {
-    return `${base}_the_end`;
-  }
-  return base;
 }
 
 function trackContainerOpen(player: OnlinePlayer): void {

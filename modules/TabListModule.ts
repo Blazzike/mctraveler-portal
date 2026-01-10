@@ -301,7 +301,7 @@ function buildPlayerRemovePacket(uuid: string): Buffer {
   parts.push(uuidHandler(uuid));
 
   const content = Buffer.concat(parts);
-  const packetIdBuf = varIntHandler(0x3d);
+  const packetIdBuf = varIntHandler(playerRemovePacket.id);
   const packetContent = Buffer.concat([packetIdBuf, content]);
   return Buffer.concat([varIntHandler(packetContent.length), packetContent]);
 }
