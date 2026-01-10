@@ -21,13 +21,13 @@ describe('TabListFeature', () => {
     expect(header.toLegacyString()).toContain('MCTraveler Portal');
   });
 
-  test('returns footer with mctraveler.dev', () => {
+  test('returns footer with play.mctraveler.eu', () => {
     const results = executeHook(FeatureHook.TabListFooterRequest);
 
     expect(results).toHaveLength(1);
     const footer = results[0];
     expect(footer).toBeDefined();
-    expect(footer.toLegacyString()).toContain('mctraveler.dev');
+    expect(footer.toLegacyString()).toContain('play.mctraveler.eu');
   });
 
   test('header has correct formatting', () => {

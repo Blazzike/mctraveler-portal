@@ -5,6 +5,6 @@ export default defineFeature({
   name: 'TabList',
   onEnable: () => {
     registerHook(FeatureHook.TabListHeaderRequest, () => p`             ${p.green('MCTraveler Portal')}             \n`);
-    registerHook(FeatureHook.TabListFooterRequest, () => p`\n${p.gray('           mctraveler.dev           ')}`);
+    registerHook(FeatureHook.TabListFooterRequest, () => p`\n${p.gray('          play.mctraveler.eu          ')}`);
   },
 });
