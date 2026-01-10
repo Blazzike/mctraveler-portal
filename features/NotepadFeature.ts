@@ -51,7 +51,7 @@ function buildWritableBookItem(pages: string[]): Buffer {
 function sendFakeBook(player: OnlinePlayer, pages: string[]): void {
   const socket = getPlayerSocket(player);
   if (!socket) {
-    console.log('[Notepad] No socket for player');
+    // console.log('[Notepad] No socket for player');
     return;
   }
 
@@ -62,7 +62,7 @@ function sendFakeBook(player: OnlinePlayer, pages: string[]): void {
   // Convert hotbar slot (0-8) to inventory slot (36-44)
   const inventorySlot = heldSlot + 36;
 
-  console.log(`[Notepad] Sending book to slot ${inventorySlot} (held slot ${heldSlot})`);
+  // console.log(`[Notepad] Sending book to slot ${inventorySlot} (held slot ${heldSlot})`);
 
   const setSlot = writePacket(setSlotPacket, {
     windowId: 0,
@@ -71,7 +71,7 @@ function sendFakeBook(player: OnlinePlayer, pages: string[]): void {
     item: itemData,
   });
   safeWrite(socket, setSlot);
-  console.log(`[Notepad] Sent set_slot packet, item data: ${itemData.toString('hex')}`);
+  // console.log(`[Notepad] Sent set_slot packet, item data: ${itemData.toString('hex')}`);
 }
 
 function parseEditBookPages(packetData: Buffer): string[] {
@@ -115,7 +115,7 @@ function parseEditBookPages(packetData: Buffer): string[] {
 function triggerInventoryResync(player: OnlinePlayer): void {
   const serverSocket = getServerSocket(player);
   if (!serverSocket) {
-    console.log('[Notepad] triggerInventoryResync: No server socket for player');
+    // console.log('[Notepad] triggerInventoryResync: No server socket for player');
     return;
   }
 
@@ -135,7 +135,7 @@ function triggerInventoryResync(player: OnlinePlayer): void {
     cursorItem: null, // Empty cursor
   });
   safeWrite(serverSocket, windowClick);
-  console.log(`[Notepad] Sent window_click to backend to trigger inventory resync for slot ${inventorySlot}`);
+  // console.log(`[Notepad] Sent window_click to backend to trigger inventory resync for slot ${inventorySlot}`);
 }
 
 function clearNotepadSession(player: OnlinePlayer): void {
@@ -172,12 +172,12 @@ export default defineFeature({
 
     // Track held slot and clear notepad session when player changes held item
     registerHook(FeatureHook.HeldItemChange, ({ player, packetData }) => {
-      console.log(`[Notepad] HeldItemChange packet hex: ${packetData.toString('hex')}`);
+      // console.log(`[Notepad] HeldItemChange packet hex: ${packetData.toString('hex')}`);
 
       // The slot is a simple short (i16), not a varint
       const slot = packetData.readInt16BE(0);
 
-      console.log(`[Notepad] Held slot changed to ${slot} for ${player.username}`);
+      // console.log(`[Notepad] Held slot changed to ${slot} for ${player.username}`);
       playerHeldSlot.set(player, slot);
       clearNotepadSession(player);
     });
@@ -197,7 +197,7 @@ export default defineFeature({
 
       sendFakeBook(sender, pages);
       inNotepad.set(sender, true);
-      console.log(`[Notepad] Set inNotepad=true for ${sender.username}`);
+      // console.log(`[Notepad] Set inNotepad=true for ${sender.username}`);
     });
   },
 });
