@@ -42,7 +42,7 @@ function generateOfflineUUID(username: string): string {
 }
 
 export function broadcastPlayerJoin(uuid: string, username: string, excludeUuid?: string) {
-  const props = (executeHookFirst(FeatureHook.GetProfileProperties, { uuid }) || []) as any[];
+  const props = executeHookFirst(FeatureHook.GetProfileProperties, { uuid }) || [];
   const packet = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, { uuid, username, props });
 
   const onlinePlayers = executeHookFirst<OnlinePlayer[]>(FeatureHook.GetOnlinePlayers) || [];
@@ -85,7 +85,7 @@ function sendGlobalTabList(targetPlayer: any) {
   if (!socket) return;
 
   for (const player of players) {
-    const props = (executeHookFirst(FeatureHook.GetProfileProperties, { uuid: player.uuid }) || []) as any[];
+    const props = executeHookFirst(FeatureHook.GetProfileProperties, { uuid: player.uuid }) || [];
     const packet = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, { uuid: player.uuid, username: player.username, props });
 
     if (packet && (socket.readyState === 'open' || socket.readyState === 'writeOnly')) {
@@ -784,7 +784,7 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                         if (!playerForTabList || socketForTabList.destroyed) return;
 
                         // Send the player their own info first (so they see themselves)
-                        const selfProps = (executeHookFirst(FeatureHook.GetProfileProperties, { uuid: playerForTabList.uuid }) || []) as any[];
+                        const selfProps = executeHookFirst(FeatureHook.GetProfileProperties, { uuid: playerForTabList.uuid }) || [];
                         const selfPacket = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, {
                           uuid: playerForTabList.uuid,
                           username: playerForTabList.username,
@@ -977,7 +977,7 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                   if (!playerForTabList || socketForTabList.destroyed) return;
 
                   // Send tab list info for all online players (including self)
-                  const selfProps = (executeHookFirst(FeatureHook.GetProfileProperties, { uuid: playerForTabList.uuid }) || []) as any[];
+                  const selfProps = executeHookFirst(FeatureHook.GetProfileProperties, { uuid: playerForTabList.uuid }) || [];
                   const selfPacket = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, {
                     uuid: playerForTabList.uuid,
                     username: playerForTabList.username,
