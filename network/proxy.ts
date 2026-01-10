@@ -776,15 +776,15 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                     if (trackedPlayer) {
                       // Send the player their own info first (so they see themselves)
                       const selfProps = executeHookFirst(FeatureHook.GetProfileProperties, { uuid: trackedPlayer.uuid }) || [];
-                      const selfPacket = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, { 
-                        uuid: trackedPlayer.uuid, 
-                        username: trackedPlayer.username, 
-                        props: selfProps 
+                      const selfPacket = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, {
+                        uuid: trackedPlayer.uuid,
+                        username: trackedPlayer.username,
+                        props: selfProps,
                       });
                       if (selfPacket) {
                         safeWrite(clientSocket, selfPacket);
                       }
-                      
+
                       sendGlobalTabList(trackedPlayer);
                       sendTabListHeaderFooter(trackedPlayer);
                       // Broadcast this player to all OTHER players (they may have stale data)
