@@ -787,21 +787,31 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
 
                     // Switch complete - refresh tablist for switching player and broadcast to others
                     if (trackedPlayer) {
-                      // Send the player their own info first (so they see themselves)
-                      const selfProps = executeHookFirst(FeatureHook.GetProfileProperties, { uuid: trackedPlayer.uuid }) || [];
-                      const selfPacket = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, {
-                        uuid: trackedPlayer.uuid,
-                        username: trackedPlayer.username,
-                        props: selfProps,
-                      });
-                      if (selfPacket) {
-                        safeWrite(clientSocket, selfPacket);
-                      }
+                      const playerForTabList = trackedPlayer;
+                      const socketForTabList = clientSocket;
 
-                      sendGlobalTabList(trackedPlayer);
-                      sendTabListHeaderFooter(trackedPlayer);
-                      // Broadcast this player to all OTHER players (they may have stale data)
-                      broadcastPlayerJoin(trackedPlayer.uuid, trackedPlayer.username, trackedPlayer.uuid);
+                      // Delay tab list sending to ensure client has processed the dimension switch
+                      setTimeout(() => {
+                        if (!playerForTabList || socketForTabList.destroyed) return;
+
+                        // Send the player their own info first (so they see themselves)
+                        const selfProps = (executeHookFirst(FeatureHook.GetProfileProperties, { uuid: playerForTabList.uuid }) || []) as any[];
+                        console.log(`[TabList/Switch] Sending self packet for ${playerForTabList.username}, props: ${selfProps.length}`);
+                        const selfPacket = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, {
+                          uuid: playerForTabList.uuid,
+                          username: playerForTabList.username,
+                          props: selfProps,
+                        });
+                        if (selfPacket) {
+                          safeWrite(socketForTabList, selfPacket);
+                        }
+
+                        sendGlobalTabList(playerForTabList);
+                        sendTabListHeaderFooter(playerForTabList);
+                        // Broadcast this player to all OTHER players (they may have stale data)
+                        console.log(`[TabList/Switch] Broadcasting join of ${playerForTabList.username} to others`);
+                        broadcastPlayerJoin(playerForTabList.uuid, playerForTabList.username, playerForTabList.uuid);
+                      }, 100);
                     }
                     isSwitching = false;
                   } catch (error) {
