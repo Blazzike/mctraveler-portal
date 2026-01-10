@@ -42,7 +42,7 @@ function generateOfflineUUID(username: string): string {
 }
 
 export function broadcastPlayerJoin(uuid: string, username: string, excludeUuid?: string) {
-  const props = executeHookFirst(FeatureHook.GetProfileProperties, { uuid }) || [];
+  const props = (executeHookFirst(FeatureHook.GetProfileProperties, { uuid }) || []) as any[];
   const packet = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, { uuid, username, props });
 
   const onlinePlayers = executeHookFirst<OnlinePlayer[]>(FeatureHook.GetOnlinePlayers) || [];
@@ -79,19 +79,32 @@ export function broadcastPlayerLeave(uuid: string) {
 
 function sendGlobalTabList(targetPlayer: any) {
   const players = executeHookFirst<OnlinePlayer[]>(FeatureHook.GetOnlinePlayers) || [];
+  console.log(
+    `[TabList] sendGlobalTabList to ${targetPlayer.username}, found ${players.length} online players: ${players.map((p) => p.username).join(', ')}`
+  );
   if (players.length === 0) return;
 
+  const socket = getPlayerSocket(targetPlayer);
+  if (!socket) {
+    console.log(`[TabList] No socket found for ${targetPlayer.username}`);
+    return;
+  }
+  console.log(`[TabList] Socket state: ${socket.readyState}, destroyed: ${socket.destroyed}`);
+
   for (const player of players) {
-    const props = executeHookFirst(FeatureHook.GetProfileProperties, { uuid: player.uuid }) || [];
+    const props = (executeHookFirst(FeatureHook.GetProfileProperties, { uuid: player.uuid }) || []) as any[];
+    console.log(`[TabList] Building packet for ${player.username} (${player.uuid}), props: ${props.length}`);
     const packet = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, { uuid: player.uuid, username: player.username, props });
 
-    const socket = getPlayerSocket(targetPlayer);
     if (socket && packet && (socket.readyState === 'open' || socket.readyState === 'writeOnly')) {
       try {
         socket.write(packet);
-      } catch {
-        // Socket closed, ignore
+        console.log(`[TabList] Sent packet for ${player.username} to ${targetPlayer.username}`);
+      } catch (e) {
+        console.log(`[TabList] Failed to send packet: ${e}`);
       }
+    } else {
+      console.log(`[TabList] Could not send packet - socket: ${!!socket}, packet: ${!!packet}, state: ${socket?.readyState}`);
     }
   }
 }
@@ -958,25 +971,31 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
 
               // After Join Game packet, send tab list for players on other servers
               if (packet.packetId === joinGamePacket.id && trackedPlayer) {
+                console.log(`[TabList] Join Game received for ${trackedPlayer.username}`);
                 // Forward the Join Game packet first
                 forwardPacket(clientSocket, packet);
 
                 // Now send tab list info for all online players (including self)
                 // The backend only knows about players on its server, so we need to send info for ALL players
-                const selfProps = executeHookFirst(FeatureHook.GetProfileProperties, { uuid: trackedPlayer.uuid }) || [];
+                const selfProps = (executeHookFirst(FeatureHook.GetProfileProperties, { uuid: trackedPlayer.uuid }) || []) as any[];
+                console.log(`[TabList] Self props for ${trackedPlayer.username}: ${selfProps.length}`);
                 const selfPacket = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, {
                   uuid: trackedPlayer.uuid,
                   username: trackedPlayer.username,
                   props: selfProps,
                 });
                 if (selfPacket) {
+                  console.log(`[TabList] Sending self packet (${selfPacket.length} bytes) to ${trackedPlayer.username}`);
                   safeWrite(clientSocket, selfPacket);
+                } else {
+                  console.log(`[TabList] Failed to build self packet for ${trackedPlayer.username}`);
                 }
 
                 sendGlobalTabList(trackedPlayer);
                 sendTabListHeaderFooter(trackedPlayer);
 
                 // Broadcast this player's join to all OTHER players
+                console.log(`[TabList] Broadcasting join of ${trackedPlayer.username} to others`);
                 broadcastPlayerJoin(trackedPlayer.uuid, trackedPlayer.username, trackedPlayer.uuid);
 
                 // Flush any pending join messages
