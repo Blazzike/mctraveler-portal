@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { join, resolve } from 'node:path';
 import dedent from 'dedent';
-import { kIsProduction, kProtocolVersionString } from './config';
+import { kIsProduction, kProtocolVersionString, kSecondaryPort } from './config';
 
 type ServerType = 'primary' | 'secondary';
 
@@ -174,7 +174,7 @@ async function setupServerFiles(serverDir: string, port: number): Promise<void> 
       network-compression-threshold=-1
       enforce-secure-profile=false
       server-port=${port}
-      level-name=${port === 25567 ? 'last' : 'world'}
+      level-name=${port === kSecondaryPort ? 'last' : 'world'}
     `;
 
     await Bun.write(serverPropertiesPath, serverProperties);

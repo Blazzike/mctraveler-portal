@@ -1,6 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { kSecondaryPort } from '@/config';
 import {
   gameStateChangePacket,
   resetScorePacket,
@@ -17,6 +16,7 @@ import PersistenceModule from '@/modules/PersistenceModule';
 import { writePacket } from '@/network/defined-packet';
 import { getOnlinePlayers, getPlayerSocket } from '@/network/proxy';
 import { safeWrite } from '@/network/util';
+import { getWorldForPlayer } from '@/util/world';
 
 const { getUsernameFromUuid, isPlayerAdmin } = PersistenceModule.api;
 
@@ -159,18 +159,6 @@ function regionContains(region: Region, x: number, y: number, z: number): boolea
   const maxY = Math.max(region.start.y!, region.end.y!);
 
   return x >= minX && x <= maxX && z >= minZ && z <= maxZ && y >= minY && y <= maxY;
-}
-
-function getWorldForPlayer(player: OnlinePlayer): string {
-  const base = player.currentServerPort === kSecondaryPort ? 'last' : 'world';
-  const dim = player.currentDimension;
-  if (dim === 'nether' || dim === 'minecraft:the_nether' || dim.endsWith(':the_nether')) {
-    return `${base}_nether`;
-  }
-  if (dim === 'end' || dim === 'minecraft:the_end' || dim.endsWith(':the_end')) {
-    return `${base}_the_end`;
-  }
-  return base;
 }
 
 function getRegionAt(x: number, y: number, z: number, world: string): Region | null {

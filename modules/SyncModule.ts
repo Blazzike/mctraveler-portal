@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import * as nbt from 'prismarine-nbt';
+import { kSecondaryPort } from '@/config';
 import { defineModule } from '@/module-api/module';
 
 const SERVERS_BASE = 'minecraft-server';
@@ -13,7 +14,7 @@ function getServerDir(port: number): string {
 }
 
 function getPlayerDataPath(port: number, uuid: string): string {
-  const worldDir = port === 25567 ? 'last' : 'world';
+  const worldDir = port === kSecondaryPort ? 'last' : 'world';
   return join(getServerDir(port), worldDir, 'playerdata', `${uuid}.dat`);
 }
 

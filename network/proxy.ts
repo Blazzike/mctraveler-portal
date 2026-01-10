@@ -88,7 +88,7 @@ function sendGlobalTabList(targetPlayer: any) {
     const props = (executeHookFirst(FeatureHook.GetProfileProperties, { uuid: player.uuid }) || []) as any[];
     const packet = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, { uuid: player.uuid, username: player.username, props });
 
-    if (socket && packet && (socket.readyState === 'open' || socket.readyState === 'writeOnly')) {
+    if (packet && (socket.readyState === 'open' || socket.readyState === 'writeOnly')) {
       try {
         socket.write(packet);
       } catch {
