@@ -896,20 +896,7 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                 if (packet.packetId === 0x03) {
                   isConfigurationState = false;
                   isPlayState = true;
-
-                  // Forward the Finish Configuration packet first so the client transitions to Play state
                   forwardPacket(clientSocket, packet);
-
-                  // Now that client is in Play state, send tab list and header/footer
-                  if (trackedPlayer) {
-                    sendGlobalTabList(trackedPlayer);
-                    sendTabListHeaderFooter(trackedPlayer);
-                    // Broadcast this player's join to all OTHER players
-                    broadcastPlayerJoin(trackedPlayer.uuid, trackedPlayer.username, trackedPlayer.uuid);
-
-                    // Flush any pending join messages now that we're in play state
-                    flushPendingJoinMessages();
-                  }
                   return;
                 }
               }
@@ -969,40 +956,39 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                 }
               }
 
-              // Track dimension changes from Join Game and Respawn packets
-              if ((packet.packetId === joinGamePacket.id || packet.packetId === respawnPacket.id) && trackedPlayer) {
+              // After Join Game packet, send tab list for players on other servers
+              if (packet.packetId === joinGamePacket.id && trackedPlayer) {
+                // Forward the Join Game packet first
+                forwardPacket(clientSocket, packet);
+
+                // Now send tab list info for all online players (including self)
+                // The backend only knows about players on its server, so we need to send info for ALL players
+                const selfProps = executeHookFirst(FeatureHook.GetProfileProperties, { uuid: trackedPlayer.uuid }) || [];
+                const selfPacket = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, {
+                  uuid: trackedPlayer.uuid,
+                  username: trackedPlayer.username,
+                  props: selfProps,
+                });
+                if (selfPacket) {
+                  safeWrite(clientSocket, selfPacket);
+                }
+
+                sendGlobalTabList(trackedPlayer);
+                sendTabListHeaderFooter(trackedPlayer);
+
+                // Broadcast this player's join to all OTHER players
+                broadcastPlayerJoin(trackedPlayer.uuid, trackedPlayer.username, trackedPlayer.uuid);
+
+                // Flush any pending join messages
+                flushPendingJoinMessages();
+                return;
+              }
+
+              // Track dimension changes from Respawn packets
+              if (packet.packetId === respawnPacket.id && trackedPlayer) {
                 try {
                   const data = packet.packetData;
                   let offset = 0;
-
-                  if (packet.packetId === joinGamePacket.id) {
-                    offset += 4; // entityId
-                    offset += 1; // isHardcore
-                    let b = 0;
-                    let arrayCount = 0;
-                    let shift = 0;
-                    do {
-                      b = data[offset++] ?? 0;
-                      arrayCount |= (b & 0x7f) << shift;
-                      shift += 7;
-                    } while ((b & 0x80) !== 0);
-                    for (let i = 0; i < arrayCount; i++) {
-                      let strLen = 0;
-                      shift = 0;
-                      do {
-                        b = data[offset++] ?? 0;
-                        strLen |= (b & 0x7f) << shift;
-                        shift += 7;
-                      } while ((b & 0x80) !== 0);
-                      offset += strLen;
-                    }
-                    for (let i = 0; i < 3; i++) {
-                      do {
-                        b = data[offset++] ?? 0;
-                      } while ((b & 0x80) !== 0);
-                    }
-                    offset += 3;
-                  }
 
                   // Skip dimension type (varint)
                   let b = 0;
