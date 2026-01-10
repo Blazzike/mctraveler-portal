@@ -558,6 +558,11 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                     const existingUuid = trackedPlayer.uuid;
                     const existingUsername = trackedPlayer.username;
                     const oldPlayer = trackedPlayer;
+
+                    // Clean up old player references before creating new one
+                    playerSockets.delete(oldPlayer);
+                    serverSockets.delete(oldPlayer);
+
                     trackedPlayer = trackPlayerLogin(existingUuid, existingUsername, clientSocket, targetPort, true);
                     trackServerSocket(trackedPlayer, serverSocket);
 
