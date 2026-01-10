@@ -975,31 +975,37 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                 // Forward the Join Game packet first
                 forwardPacket(clientSocket, packet);
 
-                // Now send tab list info for all online players (including self)
-                // The backend only knows about players on its server, so we need to send info for ALL players
-                const selfProps = (executeHookFirst(FeatureHook.GetProfileProperties, { uuid: trackedPlayer.uuid }) || []) as any[];
-                console.log(`[TabList] Self props for ${trackedPlayer.username}: ${selfProps.length}`);
-                const selfPacket = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, {
-                  uuid: trackedPlayer.uuid,
-                  username: trackedPlayer.username,
-                  props: selfProps,
-                });
-                if (selfPacket) {
-                  console.log(`[TabList] Sending self packet (${selfPacket.length} bytes) to ${trackedPlayer.username}`);
-                  safeWrite(clientSocket, selfPacket);
-                } else {
-                  console.log(`[TabList] Failed to build self packet for ${trackedPlayer.username}`);
-                }
+                // Delay tab list sending to ensure client has processed Join Game
+                const playerForTabList = trackedPlayer;
+                const socketForTabList = clientSocket;
+                setTimeout(() => {
+                  if (!playerForTabList || socketForTabList.destroyed) return;
 
-                sendGlobalTabList(trackedPlayer);
-                sendTabListHeaderFooter(trackedPlayer);
+                  // Now send tab list info for all online players (including self)
+                  const selfProps = (executeHookFirst(FeatureHook.GetProfileProperties, { uuid: playerForTabList.uuid }) || []) as any[];
+                  console.log(`[TabList] Self props for ${playerForTabList.username}: ${selfProps.length}`);
+                  const selfPacket = executeHookFirst<Buffer>(FeatureHook.BuildPlayerInfoPacket, {
+                    uuid: playerForTabList.uuid,
+                    username: playerForTabList.username,
+                    props: selfProps,
+                  });
+                  if (selfPacket) {
+                    console.log(`[TabList] Sending self packet (${selfPacket.length} bytes) to ${playerForTabList.username}`);
+                    safeWrite(socketForTabList, selfPacket);
+                  } else {
+                    console.log(`[TabList] Failed to build self packet for ${playerForTabList.username}`);
+                  }
 
-                // Broadcast this player's join to all OTHER players
-                console.log(`[TabList] Broadcasting join of ${trackedPlayer.username} to others`);
-                broadcastPlayerJoin(trackedPlayer.uuid, trackedPlayer.username, trackedPlayer.uuid);
+                  sendGlobalTabList(playerForTabList);
+                  sendTabListHeaderFooter(playerForTabList);
 
-                // Flush any pending join messages
-                flushPendingJoinMessages();
+                  // Broadcast this player's join to all OTHER players
+                  console.log(`[TabList] Broadcasting join of ${playerForTabList.username} to others`);
+                  broadcastPlayerJoin(playerForTabList.uuid, playerForTabList.username, playerForTabList.uuid);
+
+                  // Flush any pending join messages
+                  flushPendingJoinMessages();
+                }, 100); // 100ms delay to let client process Join Game
                 return;
               }
 
