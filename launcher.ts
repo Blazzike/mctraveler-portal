@@ -326,7 +326,7 @@ async function restartProxy() {
     processes.delete('proxy');
     isRestartingProxy = false;
   }
-  startProcess('bun', [kIsProduction ? 'proxy:node' : 'proxy:watch'], proxyBox, 'Proxy Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
+  startProcess('bun', [kIsProduction ? 'proxy' : 'proxy:watch'], proxyBox, 'Proxy Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
 }
 
 async function handleGitHubWebhook(req: Request): Promise<Response> {
@@ -382,4 +382,4 @@ appendToBox(proxyBox, '{cyan-fg}Initializing Proxy Server...{/cyan-fg}');
 
 startProcess('bun', ['minecraft:primary'], primaryBox, 'Primary Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
 startProcess('bun', ['minecraft:secondary'], secondaryBox, 'Secondary Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
-startProcess('bun', [kIsProduction ? 'proxy:node' : 'proxy:watch'], proxyBox, 'Proxy Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
+startProcess('bun', [kIsProduction ? 'proxy' : 'proxy:watch'], proxyBox, 'Proxy Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
