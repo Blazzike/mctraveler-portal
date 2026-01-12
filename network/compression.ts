@@ -33,10 +33,7 @@ export function compressPacket(packetId: number, packetData: Buffer, threshold: 
  * Decompress a packet received from client.
  * Returns { packetId, packetData } or null if packet incomplete.
  */
-export function decompressPacket(
-  buffer: Buffer,
-  threshold: number
-): { packetId: number; packetData: Buffer; bytesRead: number } | null {
+export function decompressPacket(buffer: Buffer, _threshold: number): { packetId: number; packetData: Buffer; bytesRead: number } | null {
   try {
     // Read packet length
     const packetLength = varInt.readWithBytesCount(buffer);

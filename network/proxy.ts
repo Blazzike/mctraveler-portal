@@ -23,6 +23,7 @@ import p from '@/feature-api/paint';
 import { notifyPlayerJoin, notifyPlayerLeave } from '@/module-api/module';
 import PersistenceModule from '@/modules/PersistenceModule';
 import SyncModule from '@/modules/SyncModule';
+import { createSetCompressionPacket, DEFAULT_COMPRESSION_THRESHOLD, enableCompression } from '@/network/compression';
 import { readPacketFields, writePacket } from '@/network/defined-packet';
 import { enableEncryption, generateServerKeyPair, rsaDecrypt, type ServerKeyPair } from '@/network/encryption';
 import { handleProxyQuery } from '@/network/handle-proxy-query';
@@ -32,7 +33,6 @@ import { handleClientToServerPacket, handleServerToClientPacket, type ProxyPlaye
 import { createPacketQueue } from '@/network/packet-queue';
 import type { StatusResponse } from '@/network/types';
 import { forwardPacket, safeWrite } from '@/network/util';
-import { createSetCompressionPacket, enableCompression, DEFAULT_COMPRESSION_THRESHOLD } from '@/network/compression';
 
 function generateOfflineUUID(username: string): string {
   const hash = createHash('md5').update(`OfflinePlayer:${username}`).digest();
