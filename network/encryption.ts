@@ -40,38 +40,43 @@ export function rsaDecrypt(privateKey: crypto.KeyObject, encrypted: Buffer): Buf
 
 // Try to load OpenSSL for native CFB8 support
 const opensslLib = (() => {
-  const libNames =
-    process.platform === 'win32'
-      ? ['libcrypto.dll', 'libcrypto-3-x64.dll', 'libeay32.dll']
-      : process.platform === 'darwin'
-        ? ['libcrypto.dylib', 'libcrypto.3.dylib', 'libcrypto.1.1.dylib']
-        : ['libcrypto.so', 'libcrypto.so.3', 'libcrypto.so.1.1'];
+  // Check if we're running in Bun with FFI support
+  if (typeof Bun !== 'undefined' && typeof dlopen !== 'undefined') {
+    const libNames =
+      process.platform === 'win32'
+        ? ['libcrypto.dll', 'libcrypto-3-x64.dll', 'libeay32.dll']
+        : process.platform === 'darwin'
+          ? ['libcrypto.dylib', 'libcrypto.3.dylib', 'libcrypto.1.1.dylib']
+          : ['libcrypto.so', 'libcrypto.so.3', 'libcrypto.so.1.1'];
 
-  for (const name of libNames) {
-    try {
-      return dlopen(name, {
-        EVP_CIPHER_CTX_new: { returns: FFIType.ptr },
-        EVP_CIPHER_CTX_free: { args: [FFIType.ptr], returns: FFIType.void },
-        EVP_aes_128_cfb8: { returns: FFIType.ptr },
-        EVP_EncryptInit_ex: {
-          args: [FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr],
-          returns: FFIType.i32,
-        },
-        EVP_DecryptInit_ex: {
-          args: [FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr],
-          returns: FFIType.i32,
-        },
-        EVP_EncryptUpdate: {
-          args: [FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.i32],
-          returns: FFIType.i32,
-        },
-        EVP_DecryptUpdate: {
-          args: [FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.i32],
-          returns: FFIType.i32,
-        },
-      });
-    } catch {
-      // Try next library name
+    for (const name of libNames) {
+      try {
+        const lib = dlopen(name, {
+          EVP_CIPHER_CTX_new: { returns: FFIType.ptr },
+          EVP_CIPHER_CTX_free: { args: [FFIType.ptr], returns: FFIType.void },
+          EVP_aes_128_cfb8: { returns: FFIType.ptr },
+          EVP_EncryptInit_ex: {
+            args: [FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr],
+            returns: FFIType.i32,
+          },
+          EVP_DecryptInit_ex: {
+            args: [FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr],
+            returns: FFIType.i32,
+          },
+          EVP_EncryptUpdate: {
+            args: [FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.i32],
+            returns: FFIType.i32,
+          },
+          EVP_DecryptUpdate: {
+            args: [FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.i32],
+            returns: FFIType.i32,
+          },
+        });
+        console.log(`[Encryption] Loaded OpenSSL library: ${name}`);
+        return lib;
+      } catch (e) {
+        // Try next library name
+      }
     }
   }
   return null;
@@ -80,12 +85,13 @@ const opensslLib = (() => {
 const hasNativeCFB8 = (() => {
   try {
     crypto.createCipheriv('aes-128-cfb8', Buffer.alloc(16), Buffer.alloc(16));
+    console.log('[Encryption] Using native Node.js CFB8');
     return true;
   } catch {
     if (opensslLib) {
       console.log('[Encryption] Using OpenSSL FFI for CFB8');
     } else {
-      console.warn('[Encryption] Using manual CFB8 (slow - consider Node.js for production)');
+      console.warn('[Encryption] Using manual CFB8 (slow - ensure OpenSSL is installed for better performance)');
     }
     return false;
   }
