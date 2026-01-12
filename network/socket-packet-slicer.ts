@@ -1,3 +1,4 @@
+import zlib from 'node:zlib';
 import { varInt } from '../encoding/data-buffer';
 import type { SocketLike } from './types';
 
@@ -12,16 +13,42 @@ export function createSocketPacketSlicer(socket: SocketLike, callback: (packetId
     }
 
     buffer = Buffer.concat([buffer, processedData]);
+    const compressionEnabled = (socket as any)._compressionEnabled;
+
     while (socket.readyState === 'open' || socket.readyState === 'opening') {
       try {
         const packetLength = varInt.readWithBytesCount(buffer);
-        if (buffer.length < packetLength.bytesRead + packetLength.value) {
+        const totalLength = packetLength.bytesRead + packetLength.value;
+
+        if (buffer.length < totalLength) {
           break;
         }
 
-        const packetId = varInt.readWithBytesCount(buffer.subarray(packetLength.bytesRead));
-        callback(packetId.value, buffer.subarray(packetLength.bytesRead + packetId.bytesRead, packetLength.bytesRead + packetLength.value));
-        buffer = buffer.subarray(packetLength.bytesRead + packetLength.value);
+        if (compressionEnabled) {
+          // Compressed packet format: [Packet Length][Data Length][Data]
+          const dataLengthResult = varInt.readWithBytesCount(buffer.subarray(packetLength.bytesRead));
+          const dataLength = dataLengthResult.value;
+          const dataStart = packetLength.bytesRead + dataLengthResult.bytesRead;
+          const compressedData = buffer.subarray(dataStart, totalLength);
+
+          let uncompressedData: Buffer;
+          if (dataLength === 0) {
+            // Not compressed
+            uncompressedData = compressedData;
+          } else {
+            // Decompress
+            uncompressedData = zlib.inflateSync(compressedData);
+          }
+
+          const packetId = varInt.readWithBytesCount(uncompressedData);
+          callback(packetId.value, uncompressedData.subarray(packetId.bytesRead));
+        } else {
+          // Uncompressed packet format: [Packet Length][Packet ID][Data]
+          const packetId = varInt.readWithBytesCount(buffer.subarray(packetLength.bytesRead));
+          callback(packetId.value, buffer.subarray(packetLength.bytesRead + packetId.bytesRead, totalLength));
+        }
+
+        buffer = buffer.subarray(totalLength);
       } catch (e) {
         if (e instanceof RangeError) {
           break;

@@ -32,6 +32,7 @@ import { handleClientToServerPacket, handleServerToClientPacket, type ProxyPlaye
 import { createPacketQueue } from '@/network/packet-queue';
 import type { StatusResponse } from '@/network/types';
 import { forwardPacket, safeWrite } from '@/network/util';
+import { createSetCompressionPacket, enableCompression, DEFAULT_COMPRESSION_THRESHOLD } from '@/network/compression';
 
 function generateOfflineUUID(username: string): string {
   const hash = createHash('md5').update(`OfflinePlayer:${username}`).digest();
@@ -869,6 +870,11 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
 
                     const loginSuccess = Buffer.concat([varInt(packetContent.length), packetContent]);
 
+                    // Send Set Compression before Login Success
+                    const setCompressionPacket = createSetCompressionPacket(DEFAULT_COMPRESSION_THRESHOLD);
+                    safeWrite(clientSocket, setCompressionPacket);
+                    enableCompression(clientSocket, DEFAULT_COMPRESSION_THRESHOLD);
+
                     safeWrite(clientSocket, loginSuccess);
 
                     // Enter configuration state - forward all packets until play state
@@ -889,6 +895,11 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
 
                     // Register switcher
                     playerSwitcher.set(loginData.uuid, (port) => connectToBackend(port, true));
+
+                    // Send Set Compression before Login Success
+                    const setCompressionPacket = createSetCompressionPacket(DEFAULT_COMPRESSION_THRESHOLD);
+                    safeWrite(clientSocket, setCompressionPacket);
+                    enableCompression(clientSocket, DEFAULT_COMPRESSION_THRESHOLD);
 
                     isLoginState = false;
                     isConfigurationState = true;

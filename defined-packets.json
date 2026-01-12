@@ -54,6 +54,12 @@
     "exportName": "loginStartPacket"
   },
   {
+    "state": "login",
+    "direction": "toClient",
+    "name": "compress",
+    "exportName": "setCompressionPacket"
+  },
+  {
     "state": "play",
     "direction": "toServer",
     "name": "chat_command",

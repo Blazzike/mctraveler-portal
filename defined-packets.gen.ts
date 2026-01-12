@@ -1,28 +1,4 @@
-import {
-  anonymousNbt,
-  boolean,
-  buffer,
-  byte,
-  createArray,
-  createContainer,
-  createOptional,
-  double,
-  float,
-  int,
-  long,
-  position,
-  raw,
-  restBuffer,
-  short,
-  slot,
-  spawnInfo,
-  string,
-  unsignedShort,
-  uuid,
-  varInt,
-  vec2f,
-  when,
-} from '@/encoding/data-buffer';
+import { anonymousNbt, boolean, buffer, byte, createArray, createContainer, createOptional, double, float, int, long, position, raw, restBuffer, short, slot, spawnInfo, string, unsignedShort, uuid, varInt, vec2f, when } from '@/encoding/data-buffer';
 import { definePacket } from '@/network/defined-packet';
 
 export const handshakePacket = definePacket({
@@ -91,6 +67,13 @@ export const loginStartPacket = definePacket({
   fields: {
     username: string,
     playerUUID: uuid,
+  },
+});
+
+export const setCompressionPacket = definePacket({
+  id: 0x03,
+  fields: {
+    threshold: varInt,
   },
 });
 
