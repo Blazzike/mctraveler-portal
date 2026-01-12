@@ -23,6 +23,7 @@ import p from '@/feature-api/paint';
 import { notifyPlayerJoin, notifyPlayerLeave } from '@/module-api/module';
 import PersistenceModule from '@/modules/PersistenceModule';
 import SyncModule from '@/modules/SyncModule';
+import { createSetCompressionPacket, DEFAULT_COMPRESSION_THRESHOLD, enableCompression } from '@/network/compression';
 import { readPacketFields, writePacket } from '@/network/defined-packet';
 import { enableEncryption, generateServerKeyPair, rsaDecrypt, type ServerKeyPair } from '@/network/encryption';
 import { handleProxyQuery } from '@/network/handle-proxy-query';
@@ -869,6 +870,11 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
 
                     const loginSuccess = Buffer.concat([varInt(packetContent.length), packetContent]);
 
+                    // Send Set Compression before Login Success
+                    const setCompressionPacket = createSetCompressionPacket(DEFAULT_COMPRESSION_THRESHOLD);
+                    safeWrite(clientSocket, setCompressionPacket);
+                    enableCompression(clientSocket, DEFAULT_COMPRESSION_THRESHOLD);
+
                     safeWrite(clientSocket, loginSuccess);
 
                     // Enter configuration state - forward all packets until play state
@@ -889,6 +895,11 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
 
                     // Register switcher
                     playerSwitcher.set(loginData.uuid, (port) => connectToBackend(port, true));
+
+                    // Send Set Compression before Login Success
+                    const setCompressionPacket = createSetCompressionPacket(DEFAULT_COMPRESSION_THRESHOLD);
+                    safeWrite(clientSocket, setCompressionPacket);
+                    enableCompression(clientSocket, DEFAULT_COMPRESSION_THRESHOLD);
 
                     isLoginState = false;
                     isConfigurationState = true;

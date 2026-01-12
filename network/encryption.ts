@@ -74,7 +74,7 @@ const opensslLib = (() => {
         });
         console.log(`[Encryption] Loaded OpenSSL library: ${name}`);
         return lib;
-      } catch (e) {
+      } catch (_e) {
         // Try next library name
       }
     }

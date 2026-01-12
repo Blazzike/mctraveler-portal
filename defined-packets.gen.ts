@@ -94,6 +94,13 @@ export const loginStartPacket = definePacket({
   },
 });
 
+export const setCompressionPacket = definePacket({
+  id: 0x03,
+  fields: {
+    threshold: varInt,
+  },
+});
+
 export const chatCommandPacket = definePacket({
   id: 0x06,
   fields: {
