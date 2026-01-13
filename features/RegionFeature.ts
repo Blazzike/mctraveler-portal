@@ -562,8 +562,8 @@ export default defineFeature({
     // Block destruction protection - prevent mob griefing (endermen, creepers)
     registerHook(FeatureHook.CheckBlockDestructionProtection, ({ position, world }) => {
       const region = getRegionAt(position.x, position.y, position.z, world);
-      if (region) {
-        return true; // Always block destruction in protected regions
+      if (region && !region.flags.has('ENABLE_MOBGRIEFING')) {
+        return true; // Block mob griefing unless flag is enabled
       }
       return false;
     });
@@ -937,6 +937,7 @@ ${p.green('/rg rename <name>')}`;
         'ENABLE_PUBLIC_VILLAGER_TRADING',
         'DISABLE_PUBLIC_REDSTONE_TRIGGERS',
         'DISABLE_ANIMAL_PROTECTION',
+        'ENABLE_MOBGRIEFING',
         'PUBLIC',
       ];
 
@@ -983,6 +984,7 @@ ${p.green('/rg rename <name>')}`;
         'ENABLE_PUBLIC_VILLAGER_TRADING',
         'DISABLE_PUBLIC_REDSTONE_TRIGGERS',
         'DISABLE_ANIMAL_PROTECTION',
+        'ENABLE_MOBGRIEFING',
         'PUBLIC',
       ] as const;
       const enabledFlags = validFlags.filter((f) => currentRegion.flags.has(f));
