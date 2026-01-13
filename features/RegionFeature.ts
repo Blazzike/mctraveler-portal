@@ -465,9 +465,20 @@ export default defineFeature({
       return false;
     });
 
-    registerHook(FeatureHook.CheckBlockPlaceProtection, ({ player, position, world }) => {
+    registerHook(FeatureHook.CheckBlockPlaceProtection, ({ player, position, world, isHoldingItem }) => {
       const region = getRegionAt(position.x, position.y, position.z, world);
       if (!canModifyRegion(region, player)) {
+        // Allow interactions with interactive blocks (doors, gates, buttons, levers)
+        // when not holding an item - the player can't place blocks without an item
+        // Adventure mode handles the actual block placement prevention
+        if (!isHoldingItem) {
+          // Check if gates are disabled for this region
+          if (region!.flags.has('DISABLE_GATES')) {
+            sendProtectionMessage(player, region!.title);
+            return true;
+          }
+          return false; // Allow door/button/lever interactions
+        }
         sendProtectionMessage(player, region!.title);
         return true;
       }
@@ -497,26 +508,71 @@ export default defineFeature({
       return false;
     });
 
-    registerHook(FeatureHook.CheckItemUseProtection, ({ player }) => {
-      const region = playerCurrentRegion.get(player);
-      if (region && !canModifyRegion(region, player)) {
-        sendProtectionMessage(player, region.title);
-        return true;
-      }
+    registerHook(FeatureHook.CheckItemUseProtection, (_data) => {
+      // Allow all item uses (eating, drinking, throwing ender pearls, etc.)
+      // World-modifying actions (buckets, flint and steel) are blocked by adventure mode
+      // which is set when entering a protected region
       return false;
     });
 
     registerHook(FeatureHook.CheckEntityInteractProtection, ({ player, action, isHoldingItem }) => {
       const region = playerCurrentRegion.get(player);
-      if (region && !canModifyRegion(region, player) && !region.flags.has('DISABLE_ANIMAL_PROTECTION')) {
+      if (region && !canModifyRegion(region, player)) {
+        // Allow attacking entities - we can't distinguish hostile from passive mobs
+        // and blocking attacks prevents players from defending themselves
+        // The DISABLE_ANIMAL_PROTECTION flag now controls interact protection only
         if (action === 'attack') {
-          sendProtectionMessage(player, region.title);
-          return true;
+          // Attacks are always allowed - players need to defend against hostile mobs
+          return false;
         }
-        if ((action === 'interact' || action === 'interact_at') && isHoldingItem && !region.flags.has('ENABLE_PUBLIC_VILLAGER_TRADING')) {
-          sendProtectionMessage(player, region.title);
-          return true;
+
+        // Protect entity interactions (armor stands, item frames, animals)
+        // unless DISABLE_ANIMAL_PROTECTION flag is set
+        if (!region.flags.has('DISABLE_ANIMAL_PROTECTION')) {
+          if (action === 'interact' || action === 'interact_at') {
+            // Allow empty-hand interactions for villager trading if flag is set
+            if (!isHoldingItem && region.flags.has('ENABLE_PUBLIC_VILLAGER_TRADING')) {
+              return false;
+            }
+            // Block interactions with items (feeding, shearing, armor stand modifications)
+            if (isHoldingItem) {
+              sendProtectionMessage(player, region.title);
+              return true;
+            }
+            // Block all interact_at (armor stand positioning, item frame placement)
+            if (action === 'interact_at') {
+              sendProtectionMessage(player, region.title);
+              return true;
+            }
+          }
         }
+      }
+      return false;
+    });
+
+    // Explosion protection - block explosions in protected regions
+    registerHook(FeatureHook.CheckExplosionProtection, ({ position, world }) => {
+      const region = getRegionAt(position.x, position.y, position.z, world);
+      if (region && !region.flags.has('ENABLE_EXPLOSIONS')) {
+        return true; // Block explosion
+      }
+      return false;
+    });
+
+    // Block destruction protection - prevent mob griefing (endermen, creepers)
+    registerHook(FeatureHook.CheckBlockDestructionProtection, ({ position, world }) => {
+      const region = getRegionAt(position.x, position.y, position.z, world);
+      if (region) {
+        return true; // Always block destruction in protected regions
+      }
+      return false;
+    });
+
+    // Fire spread protection - block fire from spreading in protected regions
+    registerHook(FeatureHook.CheckFireSpreadProtection, ({ position, world }) => {
+      const region = getRegionAt(position.x, position.y, position.z, world);
+      if (region && !region.flags.has('ENABLE_FIRE_DAMAGE')) {
+        return true; // Block fire spread
       }
       return false;
     });

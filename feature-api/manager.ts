@@ -51,6 +51,9 @@ export enum FeatureHook {
   CheckSignEditProtection,
   CheckItemUseProtection,
   CheckEntityInteractProtection,
+  CheckExplosionProtection,
+  CheckBlockDestructionProtection,
+  CheckFireSpreadProtection,
   ContainerOpen,
   ContainerClose,
   // Proxy lifecycle hooks
