@@ -63,6 +63,7 @@ function trackContainerClose(player: OnlinePlayer): void {
 function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clientSocket: any): boolean {
   const world = getWorldForPlayer(player);
   const holding = HeldItemModule.api.isHoldingItem(player);
+  const heldSlot = HeldItemModule.api.getHeldSlot(player);
 
   if (packet.packetId === playerBlockDigPacket.id) {
     try {
@@ -184,6 +185,9 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
 
       const action = mouse === 1 ? 'attack' : mouse === 2 ? 'interact_at' : 'interact';
 
+      // Debug: Log all entity interactions
+      console.log(`[Protection Debug] Entity ${action} on ${target.value}, holding: ${holding}, slot: ${heldSlot}`);
+
       const results = executeHook(FeatureHook.CheckEntityInteractProtection, {
         player,
         entityId: target.value,
@@ -193,6 +197,7 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
       } as EntityInteractData);
 
       if (results.some((r) => r === true)) {
+        console.log(`[Protection Debug] Blocked entity ${action} in region`);
         return true;
       }
     } catch (e) {
