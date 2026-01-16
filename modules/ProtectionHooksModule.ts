@@ -188,6 +188,19 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
       // Debug: Log all entity interactions
       console.log(`[Protection Debug] Entity ${action} on ${target.value}, holding: ${holding}, slot: ${heldSlot}`);
 
+      // Filter out unnecessary interact_at packets
+      // interact_at is only needed for armor stands and item frames
+      // For pets and most entities, only interact should be sent
+      if (action === 'interact_at') {
+        // Check if this might be an armor stand or item frame by looking at entity ID ranges
+        // Armor stands typically have IDs in certain ranges, but we can't be certain
+        // For now, we'll block interact_at packets unless holding an item (which suggests item frame placement)
+        if (!holding) {
+          console.log(`[Protection Debug] Filtering out interact_at packet (not holding item)`);
+          return true; // Block this packet
+        }
+      }
+
       const results = executeHook(FeatureHook.CheckEntityInteractProtection, {
         player,
         entityId: target.value,
