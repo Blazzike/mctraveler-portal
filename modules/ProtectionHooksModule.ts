@@ -63,7 +63,6 @@ function trackContainerClose(player: OnlinePlayer): void {
 function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clientSocket: any): boolean {
   const world = getWorldForPlayer(player);
   const holding = HeldItemModule.api.isHoldingItem(player);
-  const heldSlot = HeldItemModule.api.getHeldSlot(player);
 
   if (packet.packetId === playerBlockDigPacket.id) {
     try {
@@ -177,46 +176,30 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
     }
   }
 
-  if (packet.packetId === useEntityPacket.id) {
-    try {
-      const data = packet.packetData;
-      const target = varInt.readWithBytesCount(data);
-      const mouse = varInt.read(data.subarray(target.bytesRead));
-
-      const action = mouse === 1 ? 'attack' : mouse === 2 ? 'interact_at' : 'interact';
-
-      // Debug: Log all entity interactions
-      console.log(`[Protection Debug] Entity ${action} on ${target.value}, holding: ${holding}, slot: ${heldSlot}`);
-
-      // Filter out unnecessary interact_at packets
-      // interact_at is only needed for armor stands and item frames
-      // For pets and most entities, only interact should be sent
-      if (action === 'interact_at') {
-        // Check if this might be an armor stand or item frame by looking at entity ID ranges
-        // Armor stands typically have IDs in certain ranges, but we can't be certain
-        // For now, we'll block interact_at packets unless holding an item (which suggests item frame placement)
-        if (!holding) {
-          console.log(`[Protection Debug] Filtering out interact_at packet (not holding item)`);
-          return true; // Block this packet
-        }
-      }
-
-      const results = executeHook(FeatureHook.CheckEntityInteractProtection, {
-        player,
-        entityId: target.value,
-        action,
-        isHoldingItem: holding,
-        world,
-      } as EntityInteractData);
-
-      if (results.some((r) => r === true)) {
-        console.log(`[Protection Debug] Blocked entity ${action} in region`);
-        return true;
-      }
-    } catch (e) {
-      console.error('[Protection] Failed to parse use entity packet:', e);
-    }
-  }
+  // Temporarily bypass entity interaction protection to debug pet sit issue
+  // if (packet.packetId === useEntityPacket.id) {
+  //   try {
+  //     const data = packet.packetData;
+  //     const target = varInt.readWithBytesCount(data);
+  //     const mouse = varInt.read(data.subarray(target.bytesRead));
+  //
+  //     const action = mouse === 1 ? 'attack' : mouse === 2 ? 'interact_at' : 'interact';
+  //
+  //     const results = executeHook(FeatureHook.CheckEntityInteractProtection, {
+  //       player,
+  //       entityId: target.value,
+  //       action,
+  //       isHoldingItem: holding,
+  //       world,
+  //     } as EntityInteractData);
+  //
+  //     if (results.some((r) => r === true)) {
+  //       return true;
+  //     }
+  //   } catch (e) {
+  //     console.error('[Protection] Failed to parse use entity packet:', e);
+  //   }
+  // }
 
   return false;
 }
