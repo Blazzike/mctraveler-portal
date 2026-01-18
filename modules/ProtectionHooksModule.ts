@@ -176,29 +176,30 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
     }
   }
 
-  if (packet.packetId === useEntityPacket.id) {
-    try {
-      const data = packet.packetData;
-      const target = varInt.readWithBytesCount(data);
-      const mouse = varInt.read(data.subarray(target.bytesRead));
-
-      const action = mouse === 1 ? 'attack' : mouse === 2 ? 'interact_at' : 'interact';
-
-      const results = executeHook(FeatureHook.CheckEntityInteractProtection, {
-        player,
-        entityId: target.value,
-        action,
-        isHoldingItem: holding,
-        world,
-      } as EntityInteractData);
-
-      if (results.some((r) => r === true)) {
-        return true;
-      }
-    } catch (e) {
-      console.error('[Protection] Failed to parse use entity packet:', e);
-    }
-  }
+  // Bypass entity interaction protection completely for pet interactions
+  // if (packet.packetId === useEntityPacket.id) {
+  //   try {
+  //     const data = packet.packetData;
+  //     const target = varInt.readWithBytesCount(data);
+  //     const mouse = varInt.read(data.subarray(target.bytesRead));
+  //
+  //     const action = mouse === 1 ? 'attack' : mouse === 2 ? 'interact_at' : 'interact';
+  //
+  //     const results = executeHook(FeatureHook.CheckEntityInteractProtection, {
+  //       player,
+  //       entityId: target.value,
+  //       action,
+  //       isHoldingItem: holding,
+  //       world,
+  //     } as EntityInteractData);
+  //
+  //     if (results.some((r) => r === true)) {
+  //       return true;
+  //     }
+  //   } catch (e) {
+  //     console.error('[Protection] Failed to parse use entity packet:', e);
+  //   }
+  // }
 
   return false;
 }

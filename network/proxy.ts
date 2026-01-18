@@ -944,27 +944,14 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                   offlineUuid: trackedPlayer.offlineUuid,
                 };
 
-                // Debug: Log entity metadata packets
-                if (packet.packetId === 0x58 || packet.packetId === 0x52) {
-                  console.log(
-                    `[Proxy Debug] Entity metadata packet ${packet.packetId.toString(16)} from server, length: ${packet.packetData.length}`
-                  );
-                }
-
                 // Run handlers first (may intercept and block)
                 if (handleServerToClientPacket(proxyPlayer, packet.packetId, packet.packetData)) {
-                  if (packet.packetId === 0x58 || packet.packetId === 0x52) {
-                    console.log(`[Proxy Debug] Entity metadata packet blocked by handler`);
-                  }
                   return;
                 }
 
                 // Run transforms (may modify packet data)
                 const transformedData = transformServerToClientPacket(proxyPlayer, packet.packetId, packet.packetData);
                 if (transformedData === null) {
-                  if (packet.packetId === 0x58 || packet.packetId === 0x52) {
-                    console.log(`[Proxy Debug] Entity metadata packet dropped by transform`);
-                  }
                   return; // Transform says to drop packet
                 }
                 if (transformedData !== packet.packetData) {
@@ -1287,7 +1274,7 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
           parsePlayerInteraction(trackedPlayer, packet.packetId, packet.packetData);
         }
 
-        // Filter out interact_at packets for empty-hand entity interactions
+        // Filter out interact_at packets for entity interactions
         // interact_at is only needed for armor stands/item frames, not pets
         // Sending both interact_at AND interact causes double-toggle
         if (packet.packetId === useEntityPacket.id) {
@@ -1295,11 +1282,20 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
           const target = varInt.readWithBytesCount(data);
           const mouse = varInt.read(data.subarray(target.bytesRead));
 
-          // mouse === 2 is interact_at
+          // Block ALL interact_at packets - they're not needed for pet interactions
           if (mouse === 2) {
-            // Skip interact_at - only forward interact (mouse === 0)
             return;
           }
+
+          // Rate limit interact packets to prevent double-toggle
+          const now = Date.now();
+          if (!trackedPlayer._lastInteractTime) {
+            trackedPlayer._lastInteractTime = 0;
+          }
+          if (now - trackedPlayer._lastInteractTime < 100) {
+            return; // Block rapid clicks within 100ms
+          }
+          trackedPlayer._lastInteractTime = now;
         }
 
         if (serverSocket) {
