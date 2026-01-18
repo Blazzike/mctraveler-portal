@@ -1286,6 +1286,16 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
           if (mouse === 2) {
             return;
           }
+
+          // Rate limit interact packets to prevent double-toggle
+          const now = Date.now();
+          if (!trackedPlayer._lastInteractTime) {
+            trackedPlayer._lastInteractTime = 0;
+          }
+          if (now - trackedPlayer._lastInteractTime < 100) {
+            return; // Block rapid clicks within 100ms
+          }
+          trackedPlayer._lastInteractTime = now;
         }
 
         if (serverSocket) {
