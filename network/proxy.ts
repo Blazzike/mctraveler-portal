@@ -1272,30 +1272,30 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
           parsePlayerMovement(trackedPlayer, packet.packetId, packet.packetData);
 
           parsePlayerInteraction(trackedPlayer, packet.packetId, packet.packetData);
-        }
 
-        // Filter out interact_at packets for entity interactions
-        // interact_at is only needed for armor stands/item frames, not pets
-        // Sending both interact_at AND interact causes double-toggle
-        if (packet.packetId === useEntityPacket.id) {
-          const data = packet.packetData;
-          const target = varInt.readWithBytesCount(data);
-          const mouse = varInt.read(data.subarray(target.bytesRead));
+          // Filter out interact_at packets for entity interactions
+          // interact_at is only needed for armor stands/item frames, not pets
+          // Sending both interact_at AND interact causes double-toggle
+          if (packet.packetId === useEntityPacket.id) {
+            const data = packet.packetData;
+            const target = varInt.readWithBytesCount(data);
+            const mouse = varInt.read(data.subarray(target.bytesRead));
 
-          // Block ALL interact_at packets - they're not needed for pet interactions
-          if (mouse === 2) {
-            return;
-          }
+            // Block ALL interact_at packets - they're not needed for pet interactions
+            if (mouse === 2) {
+              return;
+            }
 
-          // Rate limit interact packets to prevent double-toggle
-          const now = Date.now();
-          if (!trackedPlayer._lastInteractTime) {
-            trackedPlayer._lastInteractTime = 0;
+            // Rate limit interact packets to prevent double-toggle
+            const now = Date.now();
+            if (!trackedPlayer._lastInteractTime) {
+              trackedPlayer._lastInteractTime = 0;
+            }
+            if (now - trackedPlayer._lastInteractTime < 100) {
+              return; // Block rapid clicks within 100ms
+            }
+            trackedPlayer._lastInteractTime = now;
           }
-          if (now - trackedPlayer._lastInteractTime < 100) {
-            return; // Block rapid clicks within 100ms
-          }
-          trackedPlayer._lastInteractTime = now;
         }
 
         if (serverSocket) {
