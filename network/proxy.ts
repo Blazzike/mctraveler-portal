@@ -831,6 +831,14 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
 
               // Normal packet handling
               if (isLoginState) {
+                // Handle Set Compression packet (0x03) from server
+                if (packet.packetId === 0x03) {
+                  // Enable compression on server socket
+                  enableCompression(serverSocket, DEFAULT_COMPRESSION_THRESHOLD);
+                  forwardPacket(clientSocket, packet);
+                  return;
+                }
+
                 const loginData = parseLoginSuccess(packet.packetData);
                 if (loginData) {
                   if (kIsOnlineMode && pendingClientLogin) {
