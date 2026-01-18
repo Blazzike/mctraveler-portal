@@ -833,8 +833,10 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
               if (isLoginState) {
                 // Handle Set Compression packet (0x03) from server
                 if (packet.packetId === 0x03) {
-                  // Enable compression on server socket
-                  enableCompression(serverSocket, DEFAULT_COMPRESSION_THRESHOLD);
+                  // Parse the threshold from the packet data
+                  const threshold = varInt.read(packet.packetData);
+                  // Enable compression on server socket with the server's threshold
+                  enableCompression(serverSocket, threshold);
                   forwardPacket(clientSocket, packet);
                   return;
                 }
@@ -942,14 +944,27 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
                   offlineUuid: trackedPlayer.offlineUuid,
                 };
 
+                // Debug: Log entity metadata packets
+                if (packet.packetId === 0x58 || packet.packetId === 0x52) {
+                  console.log(
+                    `[Proxy Debug] Entity metadata packet ${packet.packetId.toString(16)} from server, length: ${packet.packetData.length}`
+                  );
+                }
+
                 // Run handlers first (may intercept and block)
                 if (handleServerToClientPacket(proxyPlayer, packet.packetId, packet.packetData)) {
+                  if (packet.packetId === 0x58 || packet.packetId === 0x52) {
+                    console.log(`[Proxy Debug] Entity metadata packet blocked by handler`);
+                  }
                   return;
                 }
 
                 // Run transforms (may modify packet data)
                 const transformedData = transformServerToClientPacket(proxyPlayer, packet.packetId, packet.packetData);
                 if (transformedData === null) {
+                  if (packet.packetId === 0x58 || packet.packetId === 0x52) {
+                    console.log(`[Proxy Debug] Entity metadata packet dropped by transform`);
+                  }
                   return; // Transform says to drop packet
                 }
                 if (transformedData !== packet.packetData) {
