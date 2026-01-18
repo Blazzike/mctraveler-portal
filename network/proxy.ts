@@ -1287,6 +1287,21 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
           parsePlayerInteraction(trackedPlayer, packet.packetId, packet.packetData);
         }
 
+        // Filter out interact_at packets for empty-hand entity interactions
+        // interact_at is only needed for armor stands/item frames, not pets
+        // Sending both interact_at AND interact causes double-toggle
+        if (packet.packetId === useEntityPacket.id) {
+          const data = packet.packetData;
+          const target = varInt.readWithBytesCount(data);
+          const mouse = varInt.read(data.subarray(target.bytesRead));
+
+          // mouse === 2 is interact_at
+          if (mouse === 2) {
+            // Skip interact_at - only forward interact (mouse === 0)
+            return;
+          }
+        }
+
         if (serverSocket) {
           forwardPacket(serverSocket, packet);
         }
