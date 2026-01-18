@@ -1265,11 +1265,6 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
         }
 
         if (serverSocket) {
-          // Debug: Log use_entity packets
-          if (packet.packetId === 0x19) {
-            console.log(`[Proxy Debug] Forwarding use_entity packet, length: ${packet.packetData.length}`);
-            console.log(`[Proxy Debug] Packet data: ${packet.packetData.toString('hex')}`);
-          }
           forwardPacket(serverSocket, packet);
         }
       });
