@@ -63,6 +63,7 @@ export enum FeatureHook {
   RemovePlayerFromTabList,
   SetProfileProperties,
   GetProfileProperties,
+  ClearProfileProperties,
   GetOnlinePlayers,
   TrackPlayerLogin,
   TrackPlayerLogout,

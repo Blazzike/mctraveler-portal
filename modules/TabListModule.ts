@@ -47,9 +47,7 @@ interface PlayerTabInfo {
 const globalTabList = new Map<string, PlayerTabInfo>();
 
 function removePlayerFromTabList(uuid: string): void {
-  if (globalTabList.delete(uuid)) {
-    console.log(`[TabList] Manually removed player from globalTabList: ${uuid}`);
-  }
+  globalTabList.delete(uuid);
 }
 
 function handlePlayerRemovePacket(packetData: Buffer): void {
@@ -64,18 +62,14 @@ function handlePlayerRemovePacket(packetData: Buffer): void {
       const uuid = uuidHandler.read(packetData.subarray(offset));
       offset += 16;
 
-      if (globalTabList.delete(uuid)) {
-        console.log(`[TabList] Removed player from globalTabList: ${uuid}`);
-      }
+      globalTabList.delete(uuid);
     }
-    console.log(`[TabList] After removal, globalTabList.size=${globalTabList.size}`);
   } catch (error) {
     console.error('[TabList] Error handling player_remove:', error);
   }
 }
 
 function handlePlayerInfoPacket(packetData: Buffer, propsMap: Map<string, any>, _sourcePlayerUuid?: string): Buffer | null {
-  console.log(`[TabList] handlePlayerInfoPacket called, packetData.length=${packetData.length}, hex=${packetData.toString('hex').slice(0, 100)}`);
   try {
     let offset = 0;
 
@@ -147,9 +141,6 @@ function handlePlayerInfoPacket(packetData: Buffer, propsMap: Map<string, any>, 
         }
 
         const mojangProps = onlineUUID ? propsMap.get(onlineUUID) : null;
-        console.log(
-          `[Skin] offlineUUID=${offlineUUID}, onlineUUID=${onlineUUID}, props=${mojangProps ? mojangProps.length : 0}, mapKeys=[${Array.from(propsMap.keys()).join(', ')}]`
-        );
         const propsBuffer: Buffer[] = [];
         entry.properties = [];
 
@@ -246,12 +237,9 @@ function handlePlayerInfoPacket(packetData: Buffer, propsMap: Map<string, any>, 
       }
 
       updatedEntries.push(entry);
-      console.log(`[TabList] Processed entry: uuid=${entry.uuid}, name=${entry.name}`);
     }
 
-    console.log(`[TabList] Successfully processed ${updatedEntries.length} entries, globalTabList.size=${globalTabList.size}`);
     const reconstructedPacket = Buffer.concat(newPacketParts);
-    console.log(`[TabList] Reconstructed packet length=${reconstructedPacket.length}, hex=${reconstructedPacket.toString('hex').slice(0, 100)}`);
 
     return reconstructedPacket;
   } catch (error) {
@@ -407,6 +395,10 @@ export default defineModule({
 
     registerHook(FeatureHook.GetProfileProperties, ({ uuid }) => {
       return profilePropertiesMap.get(uuid) || [];
+    });
+
+    registerHook(FeatureHook.ClearProfileProperties, ({ uuid }) => {
+      profilePropertiesMap.delete(uuid);
     });
   },
 });

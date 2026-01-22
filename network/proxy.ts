@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import net from 'node:net';
 import { kIsOnlineMode, kPrimaryPort, kProtocolVersion, kSecondaryPort } from '@/config';
 import {
@@ -21,6 +20,7 @@ import { executeCommand } from '@/feature-api/command';
 import { executeHook, executeHookFirst, FeatureHook, registerHook } from '@/feature-api/manager';
 import p from '@/feature-api/paint';
 import { notifyPlayerJoin, notifyPlayerLeave } from '@/module-api/module';
+import OnlinePlayersModule from '@/modules/OnlinePlayersModule';
 import PersistenceModule from '@/modules/PersistenceModule';
 import SyncModule from '@/modules/SyncModule';
 import { createSetCompressionPacket, DEFAULT_COMPRESSION_THRESHOLD, enableCompression } from '@/network/compression';
@@ -33,14 +33,7 @@ import { handleClientToServerPacket, handleServerToClientPacket, type ProxyPlaye
 import { createPacketQueue } from '@/network/packet-queue';
 import type { StatusResponse } from '@/network/types';
 import { forwardPacket, safeWrite } from '@/network/util';
-
-function generateOfflineUUID(username: string): string {
-  const hash = createHash('md5').update(`OfflinePlayer:${username}`).digest();
-  hash[6] = (hash[6]! & 0x0f) | 0x30;
-  hash[8] = (hash[8]! & 0x3f) | 0x80;
-  const hex = hash.toString('hex');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
-}
+import { generateOfflineUUID } from '@/util/uuid';
 
 export function broadcastPlayerJoin(uuid: string, username: string, excludeUuid?: string) {
   const props = executeHookFirst(FeatureHook.GetProfileProperties, { uuid }) || [];
@@ -49,7 +42,7 @@ export function broadcastPlayerJoin(uuid: string, username: string, excludeUuid?
   const onlinePlayers = executeHookFirst<OnlinePlayer[]>(FeatureHook.GetOnlinePlayers) || [];
   onlinePlayers.forEach((player) => {
     if (excludeUuid && player.uuid === excludeUuid) return;
-    const socket = playerSockets.get(player);
+    const socket = getPlayerSocket(player);
     if (socket && packet && (socket.readyState === 'open' || socket.readyState === 'writeOnly')) {
       try {
         socket.write(packet);
@@ -62,12 +55,13 @@ export function broadcastPlayerJoin(uuid: string, username: string, excludeUuid?
 
 export function broadcastPlayerLeave(uuid: string) {
   executeHook(FeatureHook.RemovePlayerFromTabList, { uuid });
+  executeHook(FeatureHook.ClearProfileProperties, { uuid });
 
   const packet = executeHookFirst<Buffer>(FeatureHook.BuildPlayerRemovePacket, { uuid });
 
   const onlinePlayers = executeHookFirst<OnlinePlayer[]>(FeatureHook.GetOnlinePlayers) || [];
   onlinePlayers.forEach((player) => {
-    const socket = playerSockets.get(player);
+    const socket = getPlayerSocket(player);
     if (socket && packet && (socket.readyState === 'open' || socket.readyState === 'writeOnly')) {
       try {
         socket.write(packet);
@@ -116,7 +110,7 @@ function sendTabListHeaderFooter(targetPlayer: any) {
 const onlinePlayers = new Map<string, OnlinePlayer>();
 const playerSockets = new WeakMap<OnlinePlayer, net.Socket>();
 const serverSockets = new WeakMap<OnlinePlayer, net.Socket>();
-const playerHeldSlots = new WeakMap<OnlinePlayer, number>();
+// const playerHeldSlots = new WeakMap<OnlinePlayer, number>();
 const playerPositions = new WeakMap<OnlinePlayer, { x: number; y: number; z: number }>();
 
 interface OnlinePlayer {
@@ -203,13 +197,14 @@ function trackServerSocket(player: OnlinePlayer, socket: net.Socket): void {
   serverSockets.set(player, socket);
 }
 
-function _trackHeldSlotChange(player: OnlinePlayer, slot: number): void {
-  playerHeldSlots.set(player, slot);
-}
+// Unused functions - commented out
+// function _trackHeldSlotChange(player: OnlinePlayer, slot: number): void {
+//   playerHeldSlots.set(player, slot);
+// }
 
-function _clearPlayerTracking(player: OnlinePlayer): void {
-  playerHeldSlots.delete(player);
-}
+// function _clearPlayerTracking(player: OnlinePlayer): void {
+//   playerHeldSlots.delete(player);
+// }
 
 function setPlayerDimensionByName(player: OnlinePlayer, dimension: string): void {
   player.currentDimension = dimension;
@@ -254,7 +249,9 @@ function parsePlayerMessage(player: OnlinePlayer, packetId: number, packetData: 
         }
         return true;
       }
-    } catch {}
+    } catch (error) {
+      console.error('[Proxy] Error parsing chat command:', error);
+    }
   }
 
   if (packetId === chatMessagePacket.id) {
@@ -268,7 +265,9 @@ function parsePlayerMessage(player: OnlinePlayer, packetId: number, packetData: 
         }
         return true;
       }
-    } catch {}
+    } catch (error) {
+      console.error('[Proxy] Error parsing chat message:', error);
+    }
   }
 
   return false;
@@ -343,7 +342,9 @@ function parseLoginStart(packetData: Buffer): { username: string; uuid: string |
         uuidBytes.subarray(10, 16).toString('hex'),
       ].join('-');
     }
-  } catch {}
+  } catch (error) {
+    console.error('[Proxy] Error parsing UUID from login start:', error);
+  }
   return { username, uuid };
 }
 
@@ -369,22 +370,23 @@ function formatUuidWithDashes(uuid: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
-function _extractUsernameFromWith(withArray: any[]): string | null {
-  if (!Array.isArray(withArray) || withArray.length === 0) {
-    return null;
-  }
-
-  const firstElement = withArray[0];
-  if (typeof firstElement === 'object' && firstElement.text) {
-    return firstElement.text;
-  }
-
-  if (typeof firstElement === 'string') {
-    return firstElement;
-  }
-
-  return null;
-}
+// Unused function - commented out
+// function _extractUsernameFromWith(withArray: any[]): string | null {
+//   if (!Array.isArray(withArray) || withArray.length === 0) {
+//     return null;
+//   }
+//
+//   const firstElement = withArray[0];
+//   if (typeof firstElement === 'object' && firstElement.text) {
+//     return firstElement.text;
+//   }
+//
+//   if (typeof firstElement === 'string') {
+//     return firstElement;
+//   }
+//
+//   return null;
+// }
 
 registerHook(FeatureHook.SystemChat, (data: { nbt: Buffer; isActionBar: boolean }) => {
   if (data.isActionBar) {
@@ -436,7 +438,16 @@ export function getPlayerSocket(player: OnlinePlayer): net.Socket | undefined {
 
   // Fall back to UUID-based lookup (for players from OnlinePlayersModule)
   const localPlayer = onlinePlayers.get(player.uuid);
-  return localPlayer ? playerSockets.get(localPlayer) : undefined;
+  if (localPlayer) {
+    const localSocket = playerSockets.get(localPlayer);
+    if (localSocket) return localSocket;
+  }
+
+  // Fall back to OnlinePlayersModule's socket storage (for test compatibility)
+  const moduleSocket = OnlinePlayersModule.api.getPlayerSocket(player);
+  if (moduleSocket) return moduleSocket;
+
+  return undefined;
 }
 
 export function getServerSocket(player: OnlinePlayer): net.Socket | undefined {
