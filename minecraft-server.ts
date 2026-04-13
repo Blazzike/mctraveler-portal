@@ -20,7 +20,7 @@ const JAVA_DIR = join(WORK_DIR, 'java');
 
 function getJavaExecutablePath(): string {
   if (process.platform === 'darwin') {
-    return join(JAVA_DIR, 'jdk-21.0.2.jdk', 'Contents', 'Home', 'bin', 'java');
+    return join(JAVA_DIR, 'jdk-25.0.2.jdk', 'Contents', 'Home', 'bin', 'java');
   } else if (process.platform === 'win32') {
     return join(JAVA_DIR, 'bin', 'java.exe');
   } else {
@@ -56,6 +56,19 @@ async function extractTarGz(tarPath: string, extractDir: string): Promise<void> 
   }
 }
 
+async function extractZip(zipPath: string, extractDir: string): Promise<void> {
+  console.log(`Extracting ${zipPath} to ${extractDir}...`);
+
+  const proc = Bun.spawn(['tar', '-xf', zipPath, '-C', extractDir, '--strip-components=1'], {
+    stdio: ['inherit', 'inherit', 'inherit'],
+  });
+
+  const exitCode = await proc.exited;
+  if (exitCode !== 0) {
+    throw new Error(`zip extraction failed with code ${exitCode}`);
+  }
+}
+
 async function downloadAndInstallJava(): Promise<void> {
   const javaExecutable = getJavaExecutablePath();
   const javaFile = Bun.file(javaExecutable);
@@ -74,23 +87,23 @@ async function downloadAndInstallJava(): Promise<void> {
 
   if (process.platform === 'darwin') {
     if (process.arch === 'arm64') {
-      javaUrl = 'https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_macos-aarch64_bin.tar.gz';
-      fileName = 'openjdk-21.0.2_macos-aarch64_bin.tar.gz';
+      javaUrl = 'https://download.java.net/java/GA/jdk25.0.2/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-25.0.2_macos-aarch64_bin.tar.gz';
+      fileName = 'openjdk-25.0.2_macos-aarch64_bin.tar.gz';
     } else {
-      javaUrl = 'https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_macos-x64_bin.tar.gz';
-      fileName = 'openjdk-21.0.2_macos-x64_bin.tar.gz';
+      javaUrl = 'https://download.java.net/java/GA/jdk25.0.2/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-25.0.2_macos-x64_bin.tar.gz';
+      fileName = 'openjdk-25.0.2_macos-x64_bin.tar.gz';
     }
   } else if (process.platform === 'linux') {
     if (process.arch === 'arm64') {
-      javaUrl = 'https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_linux-aarch64_bin.tar.gz';
-      fileName = 'openjdk-21.0.2_linux-aarch64_bin.tar.gz';
+      javaUrl = 'https://download.java.net/java/GA/jdk25.0.2/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-25.0.2_linux-aarch64_bin.tar.gz';
+      fileName = 'openjdk-25.0.2_linux-aarch64_bin.tar.gz';
     } else {
-      javaUrl = 'https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_linux-x64_bin.tar.gz';
-      fileName = 'openjdk-21.0.2_linux-x64_bin.tar.gz';
+      javaUrl = 'https://download.java.net/java/GA/jdk25.0.2/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-25.0.2_linux-x64_bin.tar.gz';
+      fileName = 'openjdk-25.0.2_linux-x64_bin.tar.gz';
     }
   } else if (process.platform === 'win32') {
-    javaUrl = 'https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_windows-x64_bin.zip';
-    fileName = 'openjdk-21.0.2_windows-x64_bin.zip';
+    javaUrl = 'https://download.java.net/java/GA/jdk25.0.2/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-25.0.2_windows-x64_bin.zip';
+    fileName = 'openjdk-25.0.2_windows-x64_bin.zip';
   } else {
     throw new Error(`Unsupported platform: ${process.platform}`);
   }
@@ -99,7 +112,11 @@ async function downloadAndInstallJava(): Promise<void> {
 
   try {
     await downloadFile(javaUrl, javaArchivePath);
-    await extractTarGz(javaArchivePath, JAVA_DIR);
+    if (process.platform === 'win32') {
+      await extractZip(javaArchivePath, JAVA_DIR);
+    } else {
+      await extractTarGz(javaArchivePath, JAVA_DIR);
+    }
 
     await Bun.write(javaArchivePath, '');
 

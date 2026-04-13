@@ -10,7 +10,7 @@ packet interception, and seamless server switching.
 ## 🚀 Features
 
 - **Custom Proxy Implementation**: Built from scratch to handle Minecraft
-  protocol version 1.21.10.
+  protocol version 26.1.2.
 - **Feature System**: Modular architecture where functionality (chat, MOTD, tab
   list, etc.) is isolated into "Features" that hook into network events.
 - **Module System**: Shared services and state management (e.g.,
@@ -121,10 +121,10 @@ version:
 1. Open `minecraft-server.ts`.
 2. Find the `getLatestMinecraftVersion` function.
 3. Uncomment the return statement to hardcode the version string (e.g.,
-   `return '1.21.10';`).
+   `return '26.1.2';`).
    ```typescript
    // return latestVersion;
-   return "1.21.10"; // Uncomment this line
+   return "26.1.2"; // Uncomment this line
    ```
 
 ## 🤝 Contributing

@@ -83,7 +83,7 @@ This project is a custom Minecraft Proxy written in TypeScript.
 
 ### Connecting
 
-Connect your Minecraft client (Version **1.21.10**) to: `localhost:25565`
+Connect your Minecraft client (Version **26.1.2**) to: `localhost:25565`
 
 ## 🎨 Code Style
 
