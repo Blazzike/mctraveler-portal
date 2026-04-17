@@ -71,7 +71,7 @@ export default defineModule({
             }
           }
         } catch {
-          // Ignore parse errors
+          // Set slot packet malformed, skip
         }
       }
       if (packetId === windowItemsPacket.id) {
@@ -101,7 +101,7 @@ export default defineModule({
             }
           }
         } catch {
-          // Ignore parse errors
+          // Window items packet malformed, skip
         }
       }
       return false;

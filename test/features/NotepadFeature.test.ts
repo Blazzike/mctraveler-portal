@@ -4,7 +4,7 @@ import { enableFeatureForTesting, reset } from '@/feature-api/manager';
 import NotepadFeature from '@/features/NotepadFeature';
 import OnlinePlayersModule from '@/modules/OnlinePlayersModule';
 import PersistenceModule from '@/modules/PersistenceModule';
-import * as proxy from '@/network/proxy';
+import { _resetSocketLookup, _setSocketLookup } from '@/network/player-tracking';
 
 const { clearOnlinePlayersForTesting, trackPlayerLogin: _trackPlayerLogin } = OnlinePlayersModule.api;
 
@@ -20,6 +20,7 @@ describe('NotepadFeature', () => {
 
   afterEach(() => {
     clearOnlinePlayersForTesting();
+    _resetSocketLookup();
   });
 
   afterAll(() => {
@@ -46,7 +47,7 @@ describe('NotepadFeature', () => {
 
       const player = trackPlayerLogin('notepad-uuid-1', 'NotepadPlayer1', mockSocket);
 
-      const socketSpy = spyOn(proxy, 'getPlayerSocket').mockReturnValue(mockSocket);
+      _setSocketLookup(() => mockSocket);
       const readSpy = spyOn(PersistenceModule.api, 'readNotepadData').mockReturnValue(['Page 1', 'Page 2']);
 
       executeCommand(player, 'notepad');
@@ -54,7 +55,6 @@ describe('NotepadFeature', () => {
       expect(packetSent).toBe(true);
 
       readSpy.mockRestore();
-      socketSpy.mockRestore();
     });
 
     test('prevents opening notepad when already open', () => {
@@ -65,7 +65,7 @@ describe('NotepadFeature', () => {
 
       const player = trackPlayerLogin('notepad-uuid-2', 'NotepadPlayer2', mockSocket);
 
-      const socketSpy = spyOn(proxy, 'getPlayerSocket').mockReturnValue(mockSocket);
+      _setSocketLookup(() => mockSocket);
       const readSpy = spyOn(PersistenceModule.api, 'readNotepadData').mockReturnValue(['Page 1']);
 
       executeCommand(player, 'notepad');
@@ -75,7 +75,6 @@ describe('NotepadFeature', () => {
       expect(result.toLegacyString()).toContain('already editing');
 
       readSpy.mockRestore();
-      socketSpy.mockRestore();
     });
   });
 });

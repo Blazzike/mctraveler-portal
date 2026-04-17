@@ -3,6 +3,7 @@
   "module": "main.ts",
   "type": "module",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "start": "PRODUCTION=1 bun run launcher.ts",
     "dev": "bun run launcher.ts",

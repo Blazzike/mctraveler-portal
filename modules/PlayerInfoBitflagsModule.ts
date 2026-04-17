@@ -1,5 +1,6 @@
 import { anonymousNbt, string as stringHandler, uuid as uuidHandler, varInt as varIntHandler } from '@/encoding/data-buffer';
 import { playerInfoUpdatePacket } from '@/manual-packets';
+import { log } from '@/logging';
 import { defineModule } from '@/module-api/module';
 import OnlinePlayersModule from '@/modules/OnlinePlayersModule';
 import TabListModule from '@/modules/TabListModule';
@@ -90,7 +91,7 @@ function rebuildPlayerInfoBitflags(packetData: Buffer): Buffer | null {
         }
 
         const mojangProps = onlineUUID ? TabListModule.api.getProfileProperties(onlineUUID) : null;
-        console.log(`[Skin] offlineUUID=${offlineUUID}, onlineUUID=${onlineUUID}, props=${mojangProps?.length ?? 0}`);
+        log.for('Skin').debug('offlineUUID=%s, onlineUUID=%s, props=%d', offlineUUID, onlineUUID, mojangProps?.length ?? 0);
         if (mojangProps && mojangProps.length > 0) {
           newPacketParts.push(varIntEncoder(mojangProps.length));
 
@@ -191,7 +192,7 @@ function rebuildPlayerInfoBitflags(packetData: Buffer): Buffer | null {
 
     return Buffer.concat(newPacketParts);
   } catch (error) {
-    console.error('[Player Info Bitflags] Error rebuilding packet:', error);
+    log.for('PlayerInfo').error('Error rebuilding packet: %s', error);
     return null;
   }
 }

@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import * as nbt from 'prismarine-nbt';
+import { log } from '@/logging';
 import { defineModule } from '@/module-api/module';
 
 const PLAYERS_DIR = 'players';
@@ -38,9 +39,9 @@ function loadUuidCache(): void {
       for (const [uuid, username] of Object.entries(data)) {
         uuidToUsername.set(uuid, username);
       }
-      console.log(`[Persistence] Loaded ${uuidToUsername.size} UUID mappings`);
+      log.for('Persistence').info('Loaded %d UUID mappings', uuidToUsername.size);
     } catch (e) {
-      console.error('Failed to load UUID cache', e);
+      log.for('Persistence').error('Failed to load UUID cache: %s', e);
     }
   }
 }
@@ -53,7 +54,7 @@ function saveUuidCache(): void {
     }
     writeFileSync(UUID_CACHE_FILE, JSON.stringify(data, null, 2));
   } catch (e) {
-    console.error('Failed to save UUID cache', e);
+    log.for('Persistence').error('Failed to save UUID cache: %s', e);
   }
 }
 
@@ -67,7 +68,7 @@ function readPlayerData(uuid: string): PlayerData {
     try {
       return JSON.parse(readFileSync(file, 'utf-8')) as PlayerData;
     } catch (e) {
-      console.error(`Failed to read player data for ${uuid}`, e);
+      log.for('Persistence').error('Failed to read player data for %s: %s', uuid, e);
     }
   }
   return {};
@@ -78,7 +79,7 @@ function writePlayerData(uuid: string, data: PlayerData): void {
   try {
     writeFileSync(file, JSON.stringify(data, null, 2));
   } catch (e) {
-    console.error(`Failed to write player data for ${uuid}`, e);
+    log.for('Persistence').error('Failed to write player data for %s: %s', uuid, e);
   }
 }
 
@@ -119,7 +120,7 @@ export default defineModule({
         if (existsSync(onlinePath) && !existsSync(offlinePath)) {
           try {
             renameSync(onlinePath, offlinePath);
-            console.log(`[Persistence] Converted playerdata: ${onlineUuid} -> ${offlineUuid} (${username})`);
+            log.for('Persistence').info('Converted playerdata: %s -> %s (%s)', onlineUuid, offlineUuid, username);
 
             const buffer = readFileSync(offlinePath);
             const { parsed } = await nbt.parse(buffer);
@@ -134,9 +135,9 @@ export default defineModule({
             const uncompressed = nbt.writeUncompressed(outputNbt as any, 'big');
             const compressed = gzipSync(uncompressed);
             writeFileSync(offlinePath, compressed);
-            console.log(`[Persistence] Set spawn location for ${username}`);
+            log.for('Persistence').info('Set spawn location for %s', username);
           } catch (e) {
-            console.error(`[Persistence] Failed to convert playerdata for ${username}:`, e);
+            log.for('Persistence').error('Failed to convert playerdata for %s: %s', username, e);
           }
         }
       }
@@ -165,7 +166,7 @@ export default defineModule({
 
       if (!skipPlayerdataConversion) {
         this.convertPlayerDataToOfflineUuid(uuid, username).catch((e) => {
-          console.error('[Persistence] Error in playerdata conversion:', e);
+          log.for('Persistence').error('Error in playerdata conversion: %s', e);
         });
       }
 
