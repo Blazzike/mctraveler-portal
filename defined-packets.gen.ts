@@ -445,6 +445,25 @@ export const acknowledgePlayerDiggingPacket = definePacket({
   },
 });
 
+export const spawnEntityPacket = definePacket({
+  id: 0x01,
+  fields: {
+    entityId: varInt,
+    objectUUID: uuid,
+    type: varInt,
+    x: double,
+    y: double,
+    z: double,
+    pitch: byte,
+    yaw: byte,
+    headPitch: byte,
+    objectData: varInt,
+    velocityX: short,
+    velocityY: short,
+    velocityZ: short,
+  },
+});
+
 export const forwardRawPacket = definePacket({
   id: -1,
   fields: {

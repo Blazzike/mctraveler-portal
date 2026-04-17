@@ -78,7 +78,7 @@ This project is a custom Minecraft Proxy written in TypeScript. See
 
 ### Connecting
 
-Connect your Minecraft client (Version **26.1.2** / 1.21.4) to:
+Connect your Minecraft client (Version **1.21.10** / 1.21.10) to:
 `localhost:25565`
 
 ### Connection Lifecycle

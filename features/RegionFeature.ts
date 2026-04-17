@@ -1068,5 +1068,5 @@ ${p.gray` - `}${p.white`/rg locate <name>`}`;
   },
 });
 
-export { getRegionAt, isResident, playerCurrentRegion, regions };
 export type { Region };
+export { getRegionAt, isResident, playerCurrentRegion, regions };

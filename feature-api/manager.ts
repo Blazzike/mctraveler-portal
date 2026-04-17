@@ -87,26 +87,26 @@ export interface HookMap {
   [FeatureHook.PlayerUseItem]: { data: PlayerEvent & { packetData: Buffer }; return: void };
   [FeatureHook.TabListHeaderRequest]: { data: void; return: Paint | undefined };
   [FeatureHook.TabListFooterRequest]: { data: void; return: Paint | undefined };
-  [FeatureHook.EditBook]: { data: PlayerEvent & { packetData: Buffer }; return: boolean | void };
+  [FeatureHook.EditBook]: { data: PlayerEvent & { packetData: Buffer }; return: boolean | undefined };
   [FeatureHook.HeldItemChange]: { data: PlayerEvent & { packetData: Buffer }; return: void };
   [FeatureHook.InventoryClick]: { data: PlayerEvent & { packetData: Buffer }; return: void };
   [FeatureHook.CheckBlockDigProtection]: {
     data: PlayerEvent & { position: { x: number; y: number; z: number }; world: string };
-    return: boolean | void;
+    return: boolean | undefined;
   };
   [FeatureHook.CheckBlockPlaceProtection]: {
     data: PlayerEvent & { position: { x: number; y: number; z: number }; world: string };
-    return: boolean | void;
+    return: boolean | undefined;
   };
-  [FeatureHook.CheckContainerClickProtection]: { data: PlayerEvent; return: boolean | void };
+  [FeatureHook.CheckContainerClickProtection]: { data: PlayerEvent; return: boolean | undefined };
   [FeatureHook.CheckSignEditProtection]: {
     data: PlayerEvent & { position: { x: number; y: number; z: number }; world: string };
-    return: boolean | void;
+    return: boolean | undefined;
   };
-  [FeatureHook.CheckItemUseProtection]: { data: PlayerEvent; return: boolean | void };
+  [FeatureHook.CheckItemUseProtection]: { data: PlayerEvent; return: boolean | undefined };
   [FeatureHook.CheckEntityInteractProtection]: {
     data: PlayerEvent & { action: 'attack' | 'interact' | 'interact_at'; isHoldingItem: boolean };
-    return: boolean | void;
+    return: boolean | undefined;
   };
   [FeatureHook.ContainerOpen]: { data: PlayerEvent; return: void };
   [FeatureHook.ContainerClose]: { data: PlayerEvent; return: void };

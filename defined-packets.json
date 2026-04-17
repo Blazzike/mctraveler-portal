@@ -274,5 +274,11 @@
     "direction": "toClient",
     "name": "acknowledge_player_digging",
     "exportName": "acknowledgePlayerDiggingPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "spawn_entity",
+    "exportName": "spawnEntityPacket"
   }
 ]

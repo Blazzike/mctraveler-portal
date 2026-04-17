@@ -10,7 +10,7 @@ packet interception, and seamless server switching.
 ## 🚀 Features
 
 - **Custom Proxy Implementation**: Built from scratch to handle Minecraft
-  protocol version 26.1.2 (1.21.4).
+  protocol version 1.21.10 (1.21.10).
 - **Feature System**: Modular architecture where functionality (chat, MOTD, tab
   list, etc.) is isolated into "Features" that hook into network events.
 - **Module System**: Shared services and state management (e.g.,
@@ -51,15 +51,15 @@ packet interception, and seamless server switching.
 
 Environment variables can be set in `.env` (see `.env.example` for details):
 
-| Variable                  | Default  | Description                                             |
-| ------------------------- | -------- | ------------------------------------------------------- |
-| `PORT`                    | `25565`  | Proxy listen port                                       |
-| `PRIMARY_PORT`            | `25566`  | Primary backend server port                             |
-| `SECONDARY_PORT`          | `25567`  | Secondary backend server port                           |
-| `PROTOCOL_VERSION`        | `775`    | Minecraft protocol version number                       |
-| `PROTOCOL_VERSION_STRING` | `26.1.2` | Minecraft version string (for downloads)                |
-| `ONLINE_MODE`             | `true`   | Set to `false` to disable Mojang authentication         |
-| `PRODUCTION`              | —        | Set to `1` or `NODE_ENV=production` for production mode |
+| Variable                  | Default   | Description                                             |
+| ------------------------- | --------- | ------------------------------------------------------- |
+| `PORT`                    | `25565`   | Proxy listen port                                       |
+| `PRIMARY_PORT`            | `25566`   | Primary backend server port                             |
+| `SECONDARY_PORT`          | `25567`   | Secondary backend server port                           |
+| `PROTOCOL_VERSION`        | `773`     | Minecraft protocol version number                       |
+| `PROTOCOL_VERSION_STRING` | `1.21.10` | Minecraft version string (for downloads)                |
+| `ONLINE_MODE`             | `true`    | Set to `false` to disable Mojang authentication         |
+| `PRODUCTION`              | —         | Set to `1` or `NODE_ENV=production` for production mode |
 
 ## 🎮 Usage
 
@@ -202,7 +202,7 @@ If the server downloads the wrong version or you need to force a specific
 version:
 
 1. Set `PROTOCOL_VERSION_STRING` in your `.env` to the desired version (e.g.,
-   `26.1.2`).
+   `1.21.10`).
 
 ## 🤝 Contributing
 

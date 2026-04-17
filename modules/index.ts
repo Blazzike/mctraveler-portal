@@ -11,3 +11,4 @@ export { default as PlayerPositionModule } from './PlayerPositionModule';
 export { default as ProtectionHooksModule } from './ProtectionHooksModule';
 export { default as SyncModule } from './SyncModule';
 export { default as TabListModule } from './TabListModule';
+export { default as XpOrbMergeModule } from './XpOrbMergeModule';

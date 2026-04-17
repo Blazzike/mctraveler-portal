@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { join, resolve } from 'node:path';
 import dedent from 'dedent';
-import { kIsProduction, kProtocolVersionString, kSecondaryPort } from './config';
+import { kIsProduction, kMcMemoryMax, kMcMemoryMin, kProtocolVersionString, kSecondaryPort } from './config';
 import { log } from './logging';
 
 type ServerType = 'primary' | 'secondary';
@@ -21,7 +21,7 @@ const JAVA_DIR = join(WORK_DIR, 'java');
 
 function getJavaExecutablePath(): string {
   if (process.platform === 'darwin') {
-    return join(JAVA_DIR, 'jdk-25.0.2.jdk', 'Contents', 'Home', 'bin', 'java');
+    return join(JAVA_DIR, 'jdk-21.0.2.jdk', 'Contents', 'Home', 'bin', 'java');
   } else if (process.platform === 'win32') {
     return join(JAVA_DIR, 'bin', 'java.exe');
   } else {
@@ -88,23 +88,23 @@ async function downloadAndInstallJava(): Promise<void> {
 
   if (process.platform === 'darwin') {
     if (process.arch === 'arm64') {
-      javaUrl = 'https://download.java.net/java/GA/jdk25.0.2/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-25.0.2_macos-aarch64_bin.tar.gz';
-      fileName = 'openjdk-25.0.2_macos-aarch64_bin.tar.gz';
+      javaUrl = 'https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_macos-aarch64_bin.tar.gz';
+      fileName = 'openjdk-21.0.2_macos-aarch64_bin.tar.gz';
     } else {
-      javaUrl = 'https://download.java.net/java/GA/jdk25.0.2/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-25.0.2_macos-x64_bin.tar.gz';
-      fileName = 'openjdk-25.0.2_macos-x64_bin.tar.gz';
+      javaUrl = 'https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_macos-x64_bin.tar.gz';
+      fileName = 'openjdk-21.0.2_macos-x64_bin.tar.gz';
     }
   } else if (process.platform === 'linux') {
     if (process.arch === 'arm64') {
-      javaUrl = 'https://download.java.net/java/GA/jdk25.0.2/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-25.0.2_linux-aarch64_bin.tar.gz';
-      fileName = 'openjdk-25.0.2_linux-aarch64_bin.tar.gz';
+      javaUrl = 'https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_linux-aarch64_bin.tar.gz';
+      fileName = 'openjdk-21.0.2_linux-aarch64_bin.tar.gz';
     } else {
-      javaUrl = 'https://download.java.net/java/GA/jdk25.0.2/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-25.0.2_linux-x64_bin.tar.gz';
-      fileName = 'openjdk-25.0.2_linux-x64_bin.tar.gz';
+      javaUrl = 'https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_linux-x64_bin.tar.gz';
+      fileName = 'openjdk-21.0.2_linux-x64_bin.tar.gz';
     }
   } else if (process.platform === 'win32') {
-    javaUrl = 'https://download.java.net/java/GA/jdk25.0.2/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-25.0.2_windows-x64_bin.zip';
-    fileName = 'openjdk-25.0.2_windows-x64_bin.zip';
+    javaUrl = 'https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_windows-x64_bin.zip';
+    fileName = 'openjdk-21.0.2_windows-x64_bin.zip';
   } else {
     throw new Error(`Unsupported platform: ${process.platform}`);
   }
@@ -218,14 +218,13 @@ async function startMinecraftServer(javaPath: string, serverJarPath: string, por
   log.for('MCServer').info('Server jar: %s', absoluteServerJarPath);
   log.for('MCServer').info('Working directory: %s', absoluteServerDir);
 
-  const memorySize = '8G';
-  log.for('MCServer').info('Memory: %s (Mode: %s)', memorySize, kIsProduction ? 'production' : 'development');
+  log.for('MCServer').info('Memory: max=%s min=%s (Mode: %s)', kMcMemoryMax, kMcMemoryMin, kIsProduction ? 'production' : 'development');
 
   const serverProcess = Bun.spawn(
     [
       absoluteJavaPath,
-      `-Xmx${memorySize}`,
-      `-Xms${memorySize}`,
+      `-Xmx${kMcMemoryMax}`,
+      `-Xms${kMcMemoryMin}`,
       '-XX:+UseG1GC',
       '-XX:+ParallelRefProcEnabled',
       '-XX:MaxGCPauseMillis=200',
