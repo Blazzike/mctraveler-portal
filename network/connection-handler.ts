@@ -77,6 +77,7 @@ export class ConnectionHandler {
   private serverSocket!: net.Socket;
   private serverPacketQueue!: PacketQueue;
 
+  private handshake: any = null;
   private pendingLogin: { username: string; verifyToken: Buffer } | null = null;
   private pendingClientLogin: { username: string; uuid: string; sharedSecret: Buffer; profile: any; isRemapped: boolean } | null = null;
 
@@ -98,6 +99,7 @@ export class ConnectionHandler {
 
   /** Run the connection handler to completion. */
   async run(handshake: any): Promise<void> {
+    this.handshake = handshake;
     if (handshake.nextState === HANDSHAKE_STATUS) {
       await handleProxyQuery(this.clientSocket, this.clientPacketQueue, this.onStatusRequest);
       return;
@@ -175,14 +177,21 @@ export class ConnectionHandler {
       } else {
         // Offline Mode - Connect to backend now
         const offlineUuid = generateOfflineUUID(loginData.username);
-        const savedPort = resolvePort(getPlayerLastServerName(offlineUuid));
+        const formattedOfflineUuid = formatUuidWithDashes(offlineUuid);
+        const savedPort = resolvePort(getPlayerLastServerName(formattedOfflineUuid));
         const initialPort = savedPort || this.targetPort;
         this.currentBackendPort = initialPort;
 
         try {
           await this.connectToBackend(initialPort);
           if (this.serverSocket) {
-            forwardPacket(this.serverSocket, packet);
+            // Construct Login Start packet with offline UUID for backend
+            const loginStartPacketId = varInt(LOGIN_START);
+            const loginStartUsername = string(loginData.username);
+            const loginStartUuid = Buffer.from(formattedOfflineUuid.replace(/-/g, ''), 'hex');
+            const loginStartContent = Buffer.concat([loginStartPacketId, loginStartUsername, loginStartUuid]);
+            const backendLoginStart = Buffer.concat([varInt(loginStartContent.length), loginStartContent]);
+            safeWrite(this.serverSocket, backendLoginStart);
           }
         } catch {
           // Connection error already handled in connectToBackend
@@ -784,7 +793,10 @@ export class ConnectionHandler {
       }
     }
 
-    if (isSwitch) this.isSwitching = true;
+    if (isSwitch) {
+      this.isSwitching = true;
+      this.currentBackendPort = targetPort;
+    }
 
     return new Promise<void>((resolve, reject) => {
       this.serverSocket = net.connect(targetPort, 'localhost');
@@ -824,7 +836,7 @@ export class ConnectionHandler {
             safeWrite(this.serverSocket, backendLoginStart);
           }
         } else {
-          // Initial handshake will be forwarded by caller
+          safeWrite(this.serverSocket, writePacket(handshakePacket, this.handshake));
         }
 
         this.serverPacketQueue.onPacket((packet) => {
