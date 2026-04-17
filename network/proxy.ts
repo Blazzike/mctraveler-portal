@@ -86,7 +86,10 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
 
       await handler.run(handshake);
     } catch (e) {
-      log.for('Proxy').error('Error in client connection handler: %s', e);
+      const isBufferBounds = e instanceof RangeError && (e as NodeJS.ErrnoException).code === 'ERR_BUFFER_OUT_OF_BOUNDS';
+      if (!isBufferBounds) {
+        log.for('Proxy').error('Error in client connection handler: %s', e);
+      }
       clientSocket.end();
     }
   });
