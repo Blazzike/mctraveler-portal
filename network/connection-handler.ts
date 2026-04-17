@@ -1,22 +1,18 @@
 import net from 'node:net';
-import { kIsOnlineMode, kPrimaryPort, kSecondaryPort, kProtocolVersion } from '@/config';
-import {
-  gameStateChangePacket,
-  handshakePacket,
-  joinGamePacket,
-  respawnPacket,
-  systemChatPacket,
-  useEntityPacket,
-} from '@/defined-packets.gen';
+import { kIsOnlineMode, kPrimaryPort, kProtocolVersion, kSecondaryPort } from '@/config';
+import { gameStateChangePacket, handshakePacket, joinGamePacket, respawnPacket, systemChatPacket, useEntityPacket } from '@/defined-packets.gen';
 import { anonymousNbt, byte, string, varInt } from '@/encoding/data-buffer';
 import { executeHook, executeHookFirst, FeatureHook } from '@/feature-api/manager';
 import p from '@/feature-api/paint';
+import { log } from '@/logging';
 import PersistenceModule from '@/modules/PersistenceModule';
 import SyncModule from '@/modules/SyncModule';
 import { createSetCompressionPacket, DEFAULT_COMPRESSION_THRESHOLD, enableCompression } from '@/network/compression';
+import { ConnectionState } from '@/network/connection-state';
 import { readPacketFields, writePacket } from '@/network/defined-packet';
 import { enableEncryption, rsaDecrypt, type ServerKeyPair } from '@/network/encryption';
 import { handleProxyQuery } from '@/network/handle-proxy-query';
+import { formatUuidWithDashes, parseLoginStart, parseLoginSuccess, resolvePort } from '@/network/login';
 import { createEncryptionRequest, createLoginDisconnect, encryptionResponsePacket } from '@/network/login-packets';
 import { generateServerId, generateVerifyToken, verifyMojangSession } from '@/network/mojang-session';
 import { handleClientToServerPacket, handleServerToClientPacket, type ProxyPlayer, transformServerToClientPacket } from '@/network/packet-handlers';
@@ -28,6 +24,7 @@ import {
   FINISH_CONFIGURATION,
   HANDSHAKE_LOGIN,
   HANDSHAKE_STATUS,
+  INTERACT_RATE_LIMIT_MS,
   INVENTORY_CLICK,
   KEEP_ALIVE_CONFIG,
   KNOWN_PACKS,
@@ -35,13 +32,12 @@ import {
   LOGIN_DISCONNECT,
   LOGIN_START,
   LOGIN_SUCCESS,
-  INTERACT_RATE_LIMIT_MS,
   SERVER_SWITCH_DISCONNECT_DELAY,
   SET_COMPRESSION,
   TAB_LIST_SEND_DELAY,
 } from '@/network/packet-ids';
-import { parseLoginStart, parseLoginSuccess, resolvePort, formatUuidWithDashes } from '@/network/login';
 import { createPacketQueue, type PacketQueue } from '@/network/packet-queue';
+import { parsePlayerInteraction, parsePlayerMessage, parsePlayerMovement, shouldFilterInteractAt } from '@/network/packet-routing';
 import {
   broadcastJoinMessage,
   broadcastPlayerJoin,
@@ -49,19 +45,16 @@ import {
   deleteServerSocket,
   flushPendingJoinMessages,
   generateOfflineUUID,
+  type OnlinePlayer,
   sendGlobalTabList,
   sendTabListHeaderFooter,
   setPlayerDimensionByName,
   trackConnectionClose,
   trackPlayerLogin,
   trackServerSocket,
-  type OnlinePlayer,
 } from '@/network/player-tracking';
-import { parsePlayerInteraction, parsePlayerMessage, parsePlayerMovement, shouldFilterInteractAt } from '@/network/packet-routing';
 import type { StatusResponse } from '@/network/types';
 import { forwardPacket, safeWrite } from '@/network/util';
-import { log } from '@/logging';
-import { ConnectionState } from '@/network/connection-state';
 
 function getPlayerLastServerName(uuid: string): 'primary' | 'secondary' | undefined {
   return PersistenceModule.api.getPlayerLastServerName(uuid);
@@ -96,7 +89,7 @@ export class ConnectionHandler {
     private readonly serverKeyPair: ServerKeyPair | null,
     private readonly targetPort: number,
     private readonly onStatusRequest: () => StatusResponse,
-    playerSwitcher: Map<string, (port: number) => Promise<void>>,
+    playerSwitcher: Map<string, (port: number) => Promise<void>>
   ) {
     this.currentBackendPort = targetPort;
     this.clientIp = clientSocket.remoteAddress?.replace('::ffff:', '');
@@ -223,7 +216,8 @@ export class ConnectionHandler {
 
       const serverId = generateServerId(sharedSecret, this.serverKeyPair!.publicKey);
 
-      const isLocalIp = this.clientIp === '127.0.0.1' || this.clientIp === '::1' || this.clientIp?.startsWith('192.168.') || this.clientIp?.startsWith('10.');
+      const isLocalIp =
+        this.clientIp === '127.0.0.1' || this.clientIp === '::1' || this.clientIp?.startsWith('192.168.') || this.clientIp?.startsWith('10.');
       const profile = await verifyMojangSession(this.pendingLogin!.username, serverId, isLocalIp ? undefined : this.clientIp);
 
       if (!profile) {
@@ -385,7 +379,15 @@ export class ConnectionHandler {
       log.for('Skin').info('Storing %d properties for UUID %s', props.length, this.pendingClientLogin.uuid);
       executeHook(FeatureHook.SetProfileProperties, { uuid: this.pendingClientLogin.uuid, props });
 
-      this.trackedPlayer = trackPlayerLogin(this.pendingClientLogin.uuid, this.pendingClientLogin.username, this.clientSocket, this.currentBackendPort, true, undefined, this.playerSwitcher);
+      this.trackedPlayer = trackPlayerLogin(
+        this.pendingClientLogin.uuid,
+        this.pendingClientLogin.username,
+        this.clientSocket,
+        this.currentBackendPort,
+        true,
+        undefined,
+        this.playerSwitcher
+      );
       trackServerSocket(this.trackedPlayer, this.serverSocket);
       setPlayerLastServerName(this.trackedPlayer.uuid, this.currentBackendPort === kSecondaryPort ? 'secondary' : 'primary');
       this.playerSwitcher.set(this.pendingClientLogin.uuid, (port) => this.connectToBackend(port, true));
@@ -423,7 +425,15 @@ export class ConnectionHandler {
       return;
     } else {
       // Offline mode
-      this.trackedPlayer = trackPlayerLogin(loginData.uuid, loginData.username, this.clientSocket, this.currentBackendPort, false, undefined, this.playerSwitcher);
+      this.trackedPlayer = trackPlayerLogin(
+        loginData.uuid,
+        loginData.username,
+        this.clientSocket,
+        this.currentBackendPort,
+        false,
+        undefined,
+        this.playerSwitcher
+      );
       trackServerSocket(this.trackedPlayer, this.serverSocket);
       setPlayerLastServerName(this.trackedPlayer.uuid, this.currentBackendPort === kSecondaryPort ? 'secondary' : 'primary');
       this.playerSwitcher.set(loginData.uuid, (port) => this.connectToBackend(port, true));
@@ -518,11 +528,17 @@ export class ConnectionHandler {
         const data = packet.packetData;
         let offset = 0;
         let b = 0;
-        do { b = data[offset++] ?? 0; } while ((b & 0x80) !== 0);
+        do {
+          b = data[offset++] ?? 0;
+        } while ((b & 0x80) !== 0);
 
         let nameLen = 0;
         let shift = 0;
-        do { b = data[offset++] ?? 0; nameLen |= (b & 0x7f) << shift; shift += 7; } while ((b & 0x80) !== 0);
+        do {
+          b = data[offset++] ?? 0;
+          nameLen |= (b & 0x7f) << shift;
+          shift += 7;
+        } while ((b & 0x80) !== 0);
 
         const dimensionName = data.subarray(offset, offset + nameLen).toString('utf8');
         setPlayerDimensionByName(trackedPlayer, dimensionName);
@@ -566,7 +582,15 @@ export class ConnectionHandler {
         deletePlayerSocket(oldPlayer);
         deleteServerSocket(oldPlayer);
 
-        this.trackedPlayer = trackPlayerLogin(existingUuid, existingUsername, this.clientSocket, this.currentBackendPort, true, undefined, this.playerSwitcher);
+        this.trackedPlayer = trackPlayerLogin(
+          existingUuid,
+          existingUsername,
+          this.clientSocket,
+          this.currentBackendPort,
+          true,
+          undefined,
+          this.playerSwitcher
+        );
         trackServerSocket(this.trackedPlayer, this.serverSocket);
         setPlayerLastServerName(this.trackedPlayer.uuid, this.currentBackendPort === kSecondaryPort ? 'secondary' : 'primary');
 
@@ -632,16 +656,28 @@ export class ConnectionHandler {
       let arrayCount = 0;
       let shift = 0;
       let b = 0;
-      do { b = data[offset++] ?? 0; arrayCount |= (b & 0x7f) << shift; shift += 7; } while ((b & 0x80) !== 0);
+      do {
+        b = data[offset++] ?? 0;
+        arrayCount |= (b & 0x7f) << shift;
+        shift += 7;
+      } while ((b & 0x80) !== 0);
 
       for (let i = 0; i < arrayCount; i++) {
         let strLen = 0;
         shift = 0;
-        do { b = data[offset++] ?? 0; strLen |= (b & 0x7f) << shift; shift += 7; } while ((b & 0x80) !== 0);
+        do {
+          b = data[offset++] ?? 0;
+          strLen |= (b & 0x7f) << shift;
+          shift += 7;
+        } while ((b & 0x80) !== 0);
         offset += strLen;
       }
 
-      for (let i = 0; i < 3; i++) { do { b = data[offset++] ?? 0; } while ((b & 0x80) !== 0); }
+      for (let i = 0; i < 3; i++) {
+        do {
+          b = data[offset++] ?? 0;
+        } while ((b & 0x80) !== 0);
+      }
       offset += 3; // Skip 3 bools
 
       const worldStateStart = offset;
@@ -649,7 +685,11 @@ export class ConnectionHandler {
       let dimensionId = 0;
       shift = 0;
       const dimStart = offset;
-      do { b = data[offset++] ?? 0; dimensionId |= (b & 0x7f) << shift; shift += 7; } while ((b & 0x80) !== 0);
+      do {
+        b = data[offset++] ?? 0;
+        dimensionId |= (b & 0x7f) << shift;
+        shift += 7;
+      } while ((b & 0x80) !== 0);
       const dimEnd = offset;
 
       const worldStateBuffer = data.subarray(worldStateStart, data.length - 1);
@@ -681,7 +721,11 @@ export class ConnectionHandler {
         let dimNameLen = 0;
         let dimShift = 0;
         let dimB = 0;
-        do { dimB = worldStateBuffer[dimNameOffset++] ?? 0; dimNameLen |= (dimB & 0x7f) << dimShift; dimShift += 7; } while ((dimB & 0x80) !== 0);
+        do {
+          dimB = worldStateBuffer[dimNameOffset++] ?? 0;
+          dimNameLen |= (dimB & 0x7f) << dimShift;
+          dimShift += 7;
+        } while ((dimB & 0x80) !== 0);
         const dimensionName = worldStateBuffer.subarray(dimNameOffset, dimNameOffset + dimNameLen).toString('utf8');
         setPlayerDimensionByName(this.trackedPlayer, dimensionName);
 
@@ -800,5 +844,4 @@ export class ConnectionHandler {
       });
     });
   }
-
 }

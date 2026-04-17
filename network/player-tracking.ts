@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import net from 'node:net';
+import type net from 'node:net';
 import { executeHook, executeHookFirst, FeatureHook } from '@/feature-api/manager';
 import { log } from '@/logging';
 import { notifyPlayerJoin, notifyPlayerLeave } from '@/module-api/module';
@@ -32,7 +32,7 @@ const serverSockets = new WeakMap<OnlinePlayer, net.Socket>();
 const pendingJoinMessages: string[] = [];
 
 // Internal socket lookup — uses playerSockets by default, overridable for testing
-let _socketLookup: ((player: OnlinePlayer) => net.Socket | undefined) = (player) => {
+let _socketLookup: (player: OnlinePlayer) => net.Socket | undefined = (player) => {
   const socket = playerSockets.get(player);
   if (socket) return socket;
   const localPlayer = onlinePlayers.get(player.uuid);

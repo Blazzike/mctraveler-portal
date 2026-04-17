@@ -90,12 +90,24 @@ export interface HookMap {
   [FeatureHook.EditBook]: { data: PlayerEvent & { packetData: Buffer }; return: boolean | void };
   [FeatureHook.HeldItemChange]: { data: PlayerEvent & { packetData: Buffer }; return: void };
   [FeatureHook.InventoryClick]: { data: PlayerEvent & { packetData: Buffer }; return: void };
-  [FeatureHook.CheckBlockDigProtection]: { data: PlayerEvent & { position: { x: number; y: number; z: number }; world: string }; return: boolean | void };
-  [FeatureHook.CheckBlockPlaceProtection]: { data: PlayerEvent & { position: { x: number; y: number; z: number }; world: string }; return: boolean | void };
+  [FeatureHook.CheckBlockDigProtection]: {
+    data: PlayerEvent & { position: { x: number; y: number; z: number }; world: string };
+    return: boolean | void;
+  };
+  [FeatureHook.CheckBlockPlaceProtection]: {
+    data: PlayerEvent & { position: { x: number; y: number; z: number }; world: string };
+    return: boolean | void;
+  };
   [FeatureHook.CheckContainerClickProtection]: { data: PlayerEvent; return: boolean | void };
-  [FeatureHook.CheckSignEditProtection]: { data: PlayerEvent & { position: { x: number; y: number; z: number }; world: string }; return: boolean | void };
+  [FeatureHook.CheckSignEditProtection]: {
+    data: PlayerEvent & { position: { x: number; y: number; z: number }; world: string };
+    return: boolean | void;
+  };
   [FeatureHook.CheckItemUseProtection]: { data: PlayerEvent; return: boolean | void };
-  [FeatureHook.CheckEntityInteractProtection]: { data: PlayerEvent & { action: 'attack' | 'interact' | 'interact_at'; isHoldingItem: boolean }; return: boolean | void };
+  [FeatureHook.CheckEntityInteractProtection]: {
+    data: PlayerEvent & { action: 'attack' | 'interact' | 'interact_at'; isHoldingItem: boolean };
+    return: boolean | void;
+  };
   [FeatureHook.ContainerOpen]: { data: PlayerEvent; return: void };
   [FeatureHook.ContainerClose]: { data: PlayerEvent; return: void };
   [FeatureHook.PlayerGameModeChange]: { data: PlayerEvent & { gameMode: number }; return: void };
@@ -108,7 +120,10 @@ export interface HookMap {
   [FeatureHook.SetProfileProperties]: { data: { uuid: string; props: any[] }; return: void };
   [FeatureHook.GetProfileProperties]: { data: { uuid: string }; return: any[] | undefined };
   [FeatureHook.GetOnlinePlayers]: { data: void; return: OnlinePlayer[] | undefined };
-  [FeatureHook.TrackPlayerLogin]: { data: { uuid: string; username: string; socket: any; serverPort: number; isPremium: boolean; offlineUuid: string }; return: OnlinePlayer | undefined };
+  [FeatureHook.TrackPlayerLogin]: {
+    data: { uuid: string; username: string; socket: any; serverPort: number; isPremium: boolean; offlineUuid: string };
+    return: OnlinePlayer | undefined;
+  };
   [FeatureHook.TrackPlayerLogout]: { data: { uuid: string }; return: void };
   [FeatureHook.SetServerSwitcher]: { data: { uuid: string; switcher: (port: number) => Promise<void> }; return: void };
   [FeatureHook.ClearServerSwitcher]: { data: { uuid: string }; return: void };

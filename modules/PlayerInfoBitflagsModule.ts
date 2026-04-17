@@ -1,6 +1,6 @@
 import { anonymousNbt, string as stringHandler, uuid as uuidHandler, varInt as varIntHandler } from '@/encoding/data-buffer';
-import { playerInfoUpdatePacket } from '@/manual-packets';
 import { log } from '@/logging';
+import { playerInfoUpdatePacket } from '@/manual-packets';
 import { defineModule } from '@/module-api/module';
 import OnlinePlayersModule from '@/modules/OnlinePlayersModule';
 import TabListModule from '@/modules/TabListModule';

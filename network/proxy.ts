@@ -3,8 +3,9 @@ import { kIsOnlineMode } from '@/config';
 import { handshakePacket } from '@/defined-packets.gen';
 import { anonymousNbt } from '@/encoding/data-buffer';
 import { executeHookFirst, FeatureHook, registerHook } from '@/feature-api/manager';
-import { generateServerKeyPair, type ServerKeyPair } from '@/network/encryption';
+import { log } from '@/logging';
 import { ConnectionHandler } from '@/network/connection-handler';
+import { generateServerKeyPair, type ServerKeyPair } from '@/network/encryption';
 import { createPacketQueue } from '@/network/packet-queue';
 import {
   broadcastPlayerJoin,
@@ -15,10 +16,16 @@ import {
   type OnlinePlayer,
 } from '@/network/player-tracking';
 import type { StatusResponse } from '@/network/types';
-import { log } from '@/logging';
 
 // Re-export for backward compatibility — consumers import these from @/network/proxy
-export { broadcastPlayerJoin, broadcastPlayerLeave, getOnlinePlayers, getPlayerSocket, getServerSocket, type OnlinePlayer } from '@/network/player-tracking';
+export {
+  broadcastPlayerJoin,
+  broadcastPlayerLeave,
+  getOnlinePlayers,
+  getPlayerSocket,
+  getServerSocket,
+  type OnlinePlayer,
+} from '@/network/player-tracking';
 
 registerHook(FeatureHook.SystemChat, (data: { nbt: Buffer; isActionBar: boolean }) => {
   if (data.isActionBar) {
@@ -75,14 +82,7 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
       const clientPacketQueue = createPacketQueue(clientSocket);
       const handshake = await clientPacketQueue.expect(handshakePacket);
 
-      const handler = new ConnectionHandler(
-        clientSocket,
-        clientPacketQueue,
-        serverKeyPair,
-        params.target,
-        params.onStatusRequest,
-        playerSwitcher,
-      );
+      const handler = new ConnectionHandler(clientSocket, clientPacketQueue, serverKeyPair, params.target, params.onStatusRequest, playerSwitcher);
 
       await handler.run(handshake);
     } catch (e) {
