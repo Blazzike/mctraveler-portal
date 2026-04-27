@@ -18,11 +18,16 @@ interface Logger {
   debug: LogFn;
 }
 
+const isProduction = process.env.PRODUCTION === '1' || process.env.NODE_ENV === 'production';
+
+const noop: LogFn = () => {};
+
 function formatPrefix(component: string): string {
   return `[${component}]`;
 }
 
 function createLogFn(level: 'info' | 'warn' | 'error' | 'debug'): LogFn {
+  if (isProduction && (level === 'info' || level === 'debug')) return noop;
   return (message: string, ...args: any[]) => {
     console[level](message, ...args);
   };
@@ -31,10 +36,10 @@ function createLogFn(level: 'info' | 'warn' | 'error' | 'debug'): LogFn {
 function createComponentLogger(component: string): Logger {
   const prefix = formatPrefix(component);
   return {
-    info: (message: string, ...args: any[]) => console.log(`${prefix} ${message}`, ...args),
+    info: isProduction ? noop : (message: string, ...args: any[]) => console.log(`${prefix} ${message}`, ...args),
     warn: (message: string, ...args: any[]) => console.warn(`${prefix} ${message}`, ...args),
     error: (message: string, ...args: any[]) => console.error(`${prefix} ${message}`, ...args),
-    debug: (message: string, ...args: any[]) => console.debug(`${prefix} ${message}`, ...args),
+    debug: isProduction ? noop : (message: string, ...args: any[]) => console.debug(`${prefix} ${message}`, ...args),
   };
 }
 
