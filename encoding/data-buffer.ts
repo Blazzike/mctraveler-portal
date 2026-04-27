@@ -511,6 +511,7 @@ function hasSupplementaryChars(obj: any): boolean {
 
 function patchNbtStrings(buf: Buffer): Buffer {
   let offset = 0;
+  let lastCopied = 0;
   const chunks: Buffer[] = [];
 
   function readTagPayload(tagType: number) {
@@ -580,16 +581,12 @@ function patchNbtStrings(buf: Buffer): Buffer {
     if (needs4ByteFix) {
       const str = strBytes.toString('utf8');
       const mutf8 = encodeModifiedUtf8(str);
-      chunks.push(
-        buf.subarray(
-          chunks.reduce((s, c) => s + c.length, 0),
-          offset
-        )
-      );
+      chunks.push(buf.subarray(lastCopied, offset));
       const lenBuf = Buffer.allocUnsafe(2);
       lenBuf.writeUInt16BE(mutf8.length, 0);
       chunks.push(lenBuf, mutf8);
       offset += 2 + strLen;
+      lastCopied = offset;
     } else {
       offset += 2 + strLen;
     }
@@ -616,7 +613,7 @@ function patchNbtStrings(buf: Buffer): Buffer {
   if (rootType === 10) readCompound();
 
   if (chunks.length === 0) return buf;
-  chunks.push(buf.subarray(chunks.reduce((s, c) => s + c.length, 0)));
+  chunks.push(buf.subarray(lastCopied));
   return Buffer.concat(chunks);
 }
 
