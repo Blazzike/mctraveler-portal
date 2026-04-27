@@ -41,8 +41,8 @@ function sendMessageToPlayer(player: OnlinePlayer, message: any): void {
     const nbt = typeof message === 'string' ? { text: message } : message.toNbtObject ? message.toNbtObject() : message;
     const packet = writePacket(systemChatPacket, { content: nbt, isActionBar: false });
     safeWrite(sock, packet);
-  } catch {
-    // Socket closed between readyState check and write
+  } catch (e) {
+    log.for('Players').debug('Failed to send message to %s: %s', player.username, e);
   }
 }
 

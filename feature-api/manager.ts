@@ -187,8 +187,8 @@ export function reset() {
   OnlinePlayersModule.api.clearOnlinePlayersForTesting();
 }
 
-export function enableFeatureForTesting(feature: DefinedFeature) {
-  enableFeature(feature);
+export function enableFeatureForTesting<TModules extends ModuleMap>(feature: DefinedFeature<TModules>) {
+  enableFeature(feature as DefinedFeature);
 }
 
 // Overloads: typed when hook is a literal FeatureHook enum member

@@ -49,7 +49,6 @@ export function parsePlayerMessage(player: OnlinePlayer, packetId: number, packe
       executeHook(FeatureHook.PlayerCommand, { player, command });
       const result = executeCommand(player, command);
       if (result) {
-        // Don't try to send Promises as messages (async commands handle their own messaging)
         if (result !== true && !(result instanceof Promise)) {
           player.sendMessage(result);
         }
@@ -57,6 +56,7 @@ export function parsePlayerMessage(player: OnlinePlayer, packetId: number, packe
       }
     } catch (e) {
       log.for('PacketRouting').debug('Failed to parse chat command: %s', e);
+      return true;
     }
   }
 

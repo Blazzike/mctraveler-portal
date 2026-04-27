@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { $, type Subprocess, spawn } from 'bun';
 import { Box, render, Text, useApp, useInput } from 'ink';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { kIsProduction } from './config';
 
 const MAX_BUFFER_LINES = 200;
@@ -136,7 +136,7 @@ function Launcher() {
     processesRef.current.set(pane, proc);
   };
 
-  const handleCrash = (pane: Pane, exitCode: number) => {
+  const handleCrash = (_pane: Pane, exitCode: number) => {
     if (isShuttingDown) return;
     setHasError(true);
     setIsShuttingDown(true);

@@ -88,7 +88,7 @@ class CommandPattern<T extends readonly SyntaxParser[]> {
 
     if (wordIndex < inputWords.length) {
       const lastPart = this.parts[this.parts.length - 1];
-      const isRestParser = lastPart && typeof lastPart !== 'string' && lastPart.toString && lastPart.toString().includes('...');
+      const isRestParser = lastPart && typeof lastPart !== 'string' && lastPart.toString?.().includes('...');
       if (!isRestParser) {
         return { matches: false, args: {} as TupleToArgsObject<T> };
       }
