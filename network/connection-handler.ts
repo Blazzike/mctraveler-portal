@@ -1,4 +1,5 @@
 import net from 'node:net';
+import * as Sentry from '@sentry/bun';
 import { kIsOnlineMode, kProtocolVersion, kSecondaryPort } from '@/config';
 import { gameStateChangePacket, handshakePacket, joinGamePacket, respawnPacket, systemChatPacket, useEntityPacket } from '@/defined-packets.gen';
 import { anonymousNbt, byte, string, varInt } from '@/encoding/data-buffer';
@@ -276,6 +277,7 @@ export class ConnectionHandler {
 
       this.pendingLogin = null;
     } catch (error) {
+      Sentry.captureException(error);
       log.for('Auth').error('Encryption handshake error: %s', error);
       const disconnectPacket = createLoginDisconnect(p.error`Authentication failed`);
       safeWrite(this.clientSocket, disconnectPacket);
@@ -770,6 +772,7 @@ export class ConnectionHandler {
 
       this.isSwitching = false;
     } catch (error) {
+      Sentry.captureException(error);
       log.for('Switch').error('Failed to apply dimension trick: %s', error);
       forwardPacket(this.clientSocket, { packetId: joinGamePacket.id, packetData });
       this.isSwitching = false;
@@ -813,6 +816,7 @@ export class ConnectionHandler {
           reject(err);
           return;
         }
+        Sentry.captureException(err);
         log.for('Proxy').error('Connection error: %s', err.message);
         this.clientSocket.end();
         reject(err);

@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/bun';
 import { kPort, kPrimaryPort } from '@/config';
 import { executeHook, FeatureHook, init as initFeatureManager } from '@/feature-api/manager';
 import { log } from '@/logging';
@@ -60,10 +61,12 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 process.on('uncaughtException', (error) => {
+  Sentry.captureException(error);
   log.for('Proxy').error('Uncaught exception: %s', error);
   shutdown('uncaughtException');
 });
 
 process.on('unhandledRejection', (reason) => {
+  Sentry.captureException(reason);
   log.for('Proxy').error('Unhandled rejection: %s', reason);
 });

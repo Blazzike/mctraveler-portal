@@ -1,4 +1,5 @@
 import net from 'node:net';
+import * as Sentry from '@sentry/bun';
 import { kIsOnlineMode } from '@/config';
 import { handshakePacket } from '@/defined-packets.gen';
 import { anonymousNbt } from '@/encoding/data-buffer';
@@ -80,6 +81,7 @@ export function createProxy(params: { target: number; port: number; onStatusRequ
     } catch (e) {
       const isBufferBounds = e instanceof RangeError && (e as NodeJS.ErrnoException).code === 'ERR_BUFFER_OUT_OF_BOUNDS';
       if (!isBufferBounds) {
+        Sentry.captureException(e);
         log.for('Proxy').error('Error in client connection handler: %s', e);
       }
       clientSocket.end();
