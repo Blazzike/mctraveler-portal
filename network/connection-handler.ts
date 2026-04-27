@@ -1,5 +1,5 @@
 import net from 'node:net';
-import { kIsOnlineMode, kPrimaryPort, kProtocolVersion, kSecondaryPort } from '@/config';
+import { kIsOnlineMode, kProtocolVersion, kSecondaryPort } from '@/config';
 import { gameStateChangePacket, handshakePacket, joinGamePacket, respawnPacket, systemChatPacket, useEntityPacket } from '@/defined-packets.gen';
 import { anonymousNbt, byte, string, varInt } from '@/encoding/data-buffer';
 import { executeHook, executeHookFirst, FeatureHook } from '@/feature-api/manager';

@@ -136,7 +136,7 @@ function Launcher() {
     processesRef.current.set(pane, proc);
   };
 
-  const handleCrash = (_pane: Pane, exitCode: number) => {
+  const handleCrash = (_pane: Pane, _exitCode: number) => {
     if (isShuttingDown) return;
     setHasError(true);
     setIsShuttingDown(true);
@@ -254,7 +254,7 @@ function Launcher() {
             }
 
             return new Response('OK - ignored (not main branch)', { status: 200 });
-          } catch (e) {
+          } catch (_e) {
             return new Response('Invalid payload', { status: 400 });
           }
         },
