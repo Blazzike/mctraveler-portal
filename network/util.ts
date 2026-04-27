@@ -1,5 +1,4 @@
-import { forwardRawPacket } from '../defined-packets.gen';
-import { writePacket } from './defined-packet';
+import { varInt } from '../encoding/data-buffer';
 import type { LazilyParsedPacket, SocketLike } from './types';
 
 export function isSocketWritable(socket: SocketLike): boolean {
@@ -22,8 +21,14 @@ export function forwardPacket(socket: SocketLike, packet: LazilyParsedPacket): b
   if (!isSocketWritable(socket)) {
     return false;
   }
-  const packetWithId = { ...forwardRawPacket, id: packet.packetId };
-  return safeWrite(socket, writePacket(packetWithId, { raw: packet.packetData }));
+  const packetIdBuf = varInt(packet.packetId);
+  const contentLength = packetIdBuf.length + packet.packetData.length;
+  const lengthBuf = varInt(contentLength);
+  const out = Buffer.allocUnsafe(lengthBuf.length + contentLength);
+  lengthBuf.copy(out, 0);
+  packetIdBuf.copy(out, lengthBuf.length);
+  packet.packetData.copy(out, lengthBuf.length + packetIdBuf.length);
+  return safeWrite(socket, out);
 }
 
 export type Completer<T> = Promise<T> & {

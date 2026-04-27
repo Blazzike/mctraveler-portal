@@ -76,6 +76,7 @@ export class ConnectionHandler {
   private currentBackendPort: number;
   private serverSocket!: net.Socket;
   private serverPacketQueue!: PacketQueue;
+  private cachedProxyPlayer: ProxyPlayer | null = null;
 
   private handshake: any = null;
   private pendingLogin: { username: string; verifyToken: Buffer } | null = null;
@@ -282,9 +283,12 @@ export class ConnectionHandler {
     }
   }
 
-  private handleClientPlayPacket(packet: { packetId: number; packetData: Buffer }): boolean {
+  private getProxyPlayer(): ProxyPlayer {
     const trackedPlayer = this.trackedPlayer!;
-    const proxyPlayer: ProxyPlayer = {
+    if (this.cachedProxyPlayer && this.cachedProxyPlayer.serverSocket === this.serverSocket) {
+      return this.cachedProxyPlayer;
+    }
+    this.cachedProxyPlayer = {
       uuid: trackedPlayer.uuid,
       username: trackedPlayer.username,
       clientSocket: this.clientSocket,
@@ -293,6 +297,12 @@ export class ConnectionHandler {
       isPremium: trackedPlayer.isOnline,
       offlineUuid: trackedPlayer.offlineUuid,
     };
+    return this.cachedProxyPlayer;
+  }
+
+  private handleClientPlayPacket(packet: { packetId: number; packetData: Buffer }): boolean {
+    const trackedPlayer = this.trackedPlayer!;
+    const proxyPlayer = this.getProxyPlayer();
 
     if (handleClientToServerPacket(proxyPlayer, packet.packetId, packet.packetData)) {
       return true;
@@ -460,15 +470,7 @@ export class ConnectionHandler {
 
   private handleServerPlayPacket(packet: { packetId: number; packetData: Buffer }): boolean {
     const trackedPlayer = this.trackedPlayer!;
-    const proxyPlayer: ProxyPlayer = {
-      uuid: trackedPlayer.uuid,
-      username: trackedPlayer.username,
-      clientSocket: this.clientSocket,
-      serverSocket: this.serverSocket,
-      serverPort: this.currentBackendPort,
-      isPremium: trackedPlayer.isOnline,
-      offlineUuid: trackedPlayer.offlineUuid,
-    };
+    const proxyPlayer = this.getProxyPlayer();
 
     // Run handlers first (may intercept and block)
     if (handleServerToClientPacket(proxyPlayer, packet.packetId, packet.packetData)) return true;
@@ -605,6 +607,7 @@ export class ConnectionHandler {
 
         this.trackedPlayer.cachedClientSettings = oldPlayer.cachedClientSettings;
         this.trackedPlayer.cachedKnownPacks = oldPlayer.cachedKnownPacks;
+        this.cachedProxyPlayer = null;
 
         this.playerSwitcher.set(existingUuid, (port) => this.connectToBackend(port, true));
 

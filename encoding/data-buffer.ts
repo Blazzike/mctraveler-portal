@@ -31,19 +31,20 @@ export const boolean = createTypeHandler<boolean>({
   }),
 });
 
+const varIntWriteBuf = Buffer.allocUnsafe(5);
+
 export const varInt = createTypeHandler<number>({
   write: (value) => {
-    const bytes: number[] = [];
-
     let unsignedValue = value >>> 0;
+    let i = 0;
 
     while (unsignedValue >= 0x80) {
-      bytes.push((unsignedValue & 0x7f) | 0x80);
+      varIntWriteBuf[i++] = (unsignedValue & 0x7f) | 0x80;
       unsignedValue >>>= 7;
     }
-    bytes.push(unsignedValue & 0x7f);
+    varIntWriteBuf[i++] = unsignedValue & 0x7f;
 
-    return Buffer.from(bytes);
+    return Buffer.from(varIntWriteBuf.subarray(0, i));
   },
   read: (buffer) => {
     let value = 0;
