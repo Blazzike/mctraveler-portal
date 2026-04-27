@@ -14,6 +14,7 @@ function parseChatCommand(packetId: number, packetData: Buffer): string | null {
   try {
     return string.read(packetData);
   } catch {
+    // Packet data too short to read command string
     return null;
   }
 }

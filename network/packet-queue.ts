@@ -1,3 +1,4 @@
+import { log } from '@/logging';
 import { type DefinedPacket, readPacketFields } from './defined-packet';
 import { createSocketPacketSlicer } from './socket-packet-slicer';
 import type { LazilyParsedPacket, SocketLike } from './types';
@@ -51,9 +52,9 @@ export function createPacketQueue(socket: SocketLike): PacketQueue {
           await callback({ packetId, packetData });
         }
 
-        console.debug('Socket closed');
+        log.for('PacketQueue').debug('Socket closed');
       })().catch((e) => {
-        console.error('error in onPacket', e);
+        log.for('PacketQueue').error('error in onPacket: %s', e);
       });
     },
     expect: async (definedPacket: DefinedPacket) => {

@@ -58,6 +58,24 @@ describe('write', () => {
       expect(buffer).toBeInstanceOf(Buffer);
       expect(buffer).toEqual(Buffer.concat([varInt(kTestString.length), Buffer.from(kTestString)]));
     });
+
+    test('emoji characters', () => {
+      const emojiStr = 'Hello \uD83D\uDE00';
+      const buffer = string(emojiStr);
+      const utf8Bytes = Buffer.from(emojiStr, 'utf8');
+
+      expect(buffer).toBeInstanceOf(Buffer);
+      expect(buffer).toEqual(Buffer.concat([varInt(utf8Bytes.length), utf8Bytes]));
+    });
+
+    test('multi-byte unicode', () => {
+      const unicodeStr = '\u00e9\u00e8\u00ea \u4e16\u754c';
+      const buffer = string(unicodeStr);
+      const utf8Bytes = Buffer.from(unicodeStr, 'utf8');
+
+      expect(buffer).toBeInstanceOf(Buffer);
+      expect(buffer).toEqual(Buffer.concat([varInt(utf8Bytes.length), utf8Bytes]));
+    });
   });
 
   describe('unsignedShort', () => {
@@ -122,6 +140,21 @@ describe('read', () => {
     const kTestString = 'Hello world';
     test(kTestString, () => {
       expect(string.read(string(kTestString)).valueOf()).toEqual(kTestString);
+    });
+
+    test('emoji roundtrip', () => {
+      const emojiStr = 'Hello \uD83D\uDE00\uD83C\uDF89\uD83D\uDD25';
+      expect(string.read(string(emojiStr)).valueOf()).toEqual(emojiStr);
+    });
+
+    test('multi-byte unicode roundtrip', () => {
+      const unicodeStr = '\u00e9\u00e8\u00ea \u4e16\u754c';
+      expect(string.read(string(unicodeStr)).valueOf()).toEqual(unicodeStr);
+    });
+
+    test('mixed ASCII and supplementary characters', () => {
+      const mixed = 'abc \uD83D\uDC4D xyz';
+      expect(string.read(string(mixed)).valueOf()).toEqual(mixed);
     });
   });
 

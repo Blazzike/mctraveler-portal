@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import blessed from 'blessed';
-import { type Subprocess, spawn } from 'bun';
+import { $, type Subprocess, spawn } from 'bun';
+import { kIsProduction } from './config';
 
 const screen = blessed.screen({
   smartCSR: true,
@@ -10,6 +11,7 @@ const screen = blessed.screen({
 
 const processes: Map<string, Subprocess> = new Map();
 let isShuttingDown = false;
+let isRestartingProxy = false;
 let _hasError = false;
 let focusedPane: 'primary' | 'secondary' | 'proxy' = 'primary';
 
@@ -247,12 +249,20 @@ function appendToBox(box: blessed.Widgets.BoxElement, text: string) {
   screen.render();
 }
 
-async function startProcess(command: string, args: string[], box: blessed.Widgets.BoxElement, name: string, cwd?: string) {
+async function startProcess(
+  command: string,
+  args: string[],
+  box: blessed.Widgets.BoxElement,
+  name: string,
+  cwd?: string,
+  env?: Record<string, string>
+) {
   const proc = spawn([command, ...args], {
     cwd: cwd || process.cwd(),
     stdout: 'pipe',
     stderr: 'pipe',
     stdin: 'pipe',
+    env: { ...process.env, ...env },
   });
 
   const processKey = name.toLowerCase().split(' ')[0] || name.toLowerCase();
@@ -290,20 +300,77 @@ async function startProcess(command: string, args: string[], box: blessed.Widget
   if (proc.stderr) processOutput(proc.stderr, true);
 
   const exitCode = await proc.exited;
-  if (!isShuttingDown) {
+  if (!isShuttingDown && !isRestartingProxy) {
     _hasError = true;
     appendToBox(box, `{red-fg}${name} exited with code ${exitCode}{/red-fg}`);
     appendToBox(box, `{yellow-fg}Service crashed. Stopping all services...{/yellow-fg}`);
     helpBar.setContent(' {red-fg}ERROR: A service crashed! Stopping others... Press Q twice to exit.{/red-fg} ');
     screen.render();
     killAllProcesses();
-  } else {
+  } else if (isShuttingDown) {
     if (exitCode === 0 || exitCode === 143) {
       appendToBox(box, `{green-fg}${name} stopped cleanly (exit code ${exitCode}){/green-fg}`);
     } else {
       appendToBox(box, `{yellow-fg}${name} exited with code ${exitCode}{/yellow-fg}`);
     }
   }
+}
+
+async function restartProxy() {
+  const proc = processes.get('proxy');
+  if (proc) {
+    appendToBox(proxyBox, '{yellow-fg}Restarting proxy...{/yellow-fg}');
+    isRestartingProxy = true;
+    proc.kill('SIGTERM');
+    await proc.exited;
+    processes.delete('proxy');
+    isRestartingProxy = false;
+  }
+  startProcess('bun', [kIsProduction ? 'proxy' : 'proxy:watch'], proxyBox, 'Proxy Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
+}
+
+async function handleGitHubWebhook(req: Request): Promise<Response> {
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  try {
+    const payload = (await req.json()) as { ref?: string };
+    const ref = payload.ref;
+
+    if (ref === 'refs/heads/main') {
+      appendToBox(proxyBox, '{magenta-fg}[Webhook] Push to main detected, pulling changes...{/magenta-fg}');
+      screen.render();
+
+      try {
+        const result = await $`git pull`.text();
+        appendToBox(proxyBox, `{magenta-fg}[Webhook] Git pull: ${result.trim()}{/magenta-fg}`);
+        appendToBox(proxyBox, '{magenta-fg}[Webhook] Restarting proxy...{/magenta-fg}');
+        screen.render();
+        await restartProxy();
+        return new Response('OK - pulled and restarted proxy', { status: 200 });
+      } catch (e) {
+        appendToBox(proxyBox, `{red-fg}[Webhook] Git pull failed: ${e}{/red-fg}`);
+        screen.render();
+        return new Response('Git pull failed', { status: 500 });
+      }
+    }
+
+    return new Response('OK - ignored (not main branch)', { status: 200 });
+  } catch (e) {
+    console.error('Error handling webhook:', e);
+
+    return new Response('Invalid payload', { status: 400 });
+  }
+}
+
+if (kIsProduction) {
+  const webhookPort = 9000;
+  Bun.serve({
+    port: webhookPort,
+    fetch: handleGitHubWebhook,
+  });
+  appendToBox(proxyBox, `{magenta-fg}[Webhook] GitHub webhook URL: http://localhost:${webhookPort}/{/magenta-fg}`);
 }
 
 primaryBox.focus();
@@ -313,6 +380,6 @@ appendToBox(primaryBox, '{cyan-fg}Initializing Primary Server...{/cyan-fg}');
 appendToBox(secondaryBox, '{cyan-fg}Initializing Secondary Server...{/cyan-fg}');
 appendToBox(proxyBox, '{cyan-fg}Initializing Proxy Server...{/cyan-fg}');
 
-startProcess('bun', ['minecraft:primary'], primaryBox, 'Primary Server');
-startProcess('bun', ['minecraft:secondary'], secondaryBox, 'Secondary Server');
-startProcess('bun', ['proxy:watch:node'], proxyBox, 'Proxy Server');
+startProcess('bun', ['minecraft:primary'], primaryBox, 'Primary Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
+startProcess('bun', ['minecraft:secondary'], secondaryBox, 'Secondary Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });
+startProcess('bun', [kIsProduction ? 'proxy' : 'proxy:watch'], proxyBox, 'Proxy Server', undefined, { PRODUCTION: kIsProduction ? '1' : '0' });

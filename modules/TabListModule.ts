@@ -1,6 +1,7 @@
 import { playerRemovePacket, tabListHeaderFooterPacket } from '@/defined-packets.gen';
 import { anonymousNbt, string as stringHandler, uuid as uuidHandler, varInt as varIntHandler } from '@/encoding/data-buffer';
 import { executeHook, FeatureHook, registerHook } from '@/feature-api/manager';
+import { log } from '@/logging';
 import { playerInfoUpdatePacket } from '@/manual-packets';
 import { defineModule } from '@/module-api/module';
 import OnlinePlayersModule from '@/modules/OnlinePlayersModule';
@@ -48,7 +49,7 @@ const globalTabList = new Map<string, PlayerTabInfo>();
 
 function removePlayerFromTabList(uuid: string): void {
   if (globalTabList.delete(uuid)) {
-    console.log(`[TabList] Manually removed player from globalTabList: ${uuid}`);
+    log.for('TabList').debug('Manually removed player from globalTabList: %s', uuid);
   }
 }
 
@@ -65,17 +66,17 @@ function handlePlayerRemovePacket(packetData: Buffer): void {
       offset += 16;
 
       if (globalTabList.delete(uuid)) {
-        console.log(`[TabList] Removed player from globalTabList: ${uuid}`);
+        log.for('TabList').debug('Removed player from globalTabList: %s', uuid);
       }
     }
-    console.log(`[TabList] After removal, globalTabList.size=${globalTabList.size}`);
+    log.for('TabList').debug('After removal, globalTabList.size=%d', globalTabList.size);
   } catch (error) {
-    console.error('[TabList] Error handling player_remove:', error);
+    log.for('TabList').error('Error handling player_remove: %s', error);
   }
 }
 
 function handlePlayerInfoPacket(packetData: Buffer, propsMap: Map<string, any>, _sourcePlayerUuid?: string): Buffer | null {
-  console.log(`[TabList] handlePlayerInfoPacket called, packetData.length=${packetData.length}, hex=${packetData.toString('hex').slice(0, 100)}`);
+  log.for('TabList').debug('handlePlayerInfoPacket called, packetData.length=%d', packetData.length);
   try {
     let offset = 0;
 
@@ -147,9 +148,7 @@ function handlePlayerInfoPacket(packetData: Buffer, propsMap: Map<string, any>, 
         }
 
         const mojangProps = onlineUUID ? propsMap.get(onlineUUID) : null;
-        console.log(
-          `[Skin] offlineUUID=${offlineUUID}, onlineUUID=${onlineUUID}, props=${mojangProps ? mojangProps.length : 0}, mapKeys=[${Array.from(propsMap.keys()).join(', ')}]`
-        );
+        log.for('Skin').debug('offlineUUID=%s, onlineUUID=%s, props=%d', offlineUUID, onlineUUID, mojangProps ? mojangProps.length : 0);
         const propsBuffer: Buffer[] = [];
         entry.properties = [];
 
@@ -246,16 +245,16 @@ function handlePlayerInfoPacket(packetData: Buffer, propsMap: Map<string, any>, 
       }
 
       updatedEntries.push(entry);
-      console.log(`[TabList] Processed entry: uuid=${entry.uuid}, name=${entry.name}`);
+      log.for('TabList').debug('Processed entry: uuid=%s, name=%s', entry.uuid, entry.name);
     }
 
-    console.log(`[TabList] Successfully processed ${updatedEntries.length} entries, globalTabList.size=${globalTabList.size}`);
+    log.for('TabList').debug('Processed %d entries, globalTabList.size=%d', updatedEntries.length, globalTabList.size);
     const reconstructedPacket = Buffer.concat(newPacketParts);
-    console.log(`[TabList] Reconstructed packet length=${reconstructedPacket.length}, hex=${reconstructedPacket.toString('hex').slice(0, 100)}`);
+    log.for('TabList').debug('Reconstructed packet length=%d', reconstructedPacket.length);
 
     return reconstructedPacket;
   } catch (error) {
-    console.error('[TabList] Error handling packet:', error);
+    log.for('TabList').error('Error handling packet: %s', error);
     return null;
   }
 }
@@ -301,7 +300,7 @@ function buildPlayerRemovePacket(uuid: string): Buffer {
   parts.push(uuidHandler(uuid));
 
   const content = Buffer.concat(parts);
-  const packetIdBuf = varIntHandler(0x3d);
+  const packetIdBuf = varIntHandler(playerRemovePacket.id);
   const packetContent = Buffer.concat([packetIdBuf, content]);
   return Buffer.concat([varIntHandler(packetContent.length), packetContent]);
 }
@@ -399,6 +398,7 @@ export default defineModule({
 
     registerHook(FeatureHook.RemovePlayerFromTabList, ({ uuid }) => {
       removePlayerFromTabList(uuid);
+      profilePropertiesMap.delete(uuid);
     });
 
     registerHook(FeatureHook.SetProfileProperties, ({ uuid, props }) => {

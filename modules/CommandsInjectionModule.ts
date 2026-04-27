@@ -1,6 +1,7 @@
 import { declareCommandsPacket } from '@/defined-packets.gen';
 import { string as stringHandler, varInt as varIntHandler } from '@/encoding/data-buffer';
 import { getRegisteredCommands, getSuggestionsForCommand } from '@/feature-api/command';
+import { log } from '@/logging';
 import { defineModule } from '@/module-api/module';
 import OnlinePlayersModule from '@/modules/OnlinePlayersModule';
 import { onClientToServerPacket, onServerToClientTransform } from '@/network/packet-handlers';
@@ -155,7 +156,7 @@ function createArgumentNode(name: string, type: string): CommandNode | null {
     };
   }
 
-  console.warn(`[CommandTree] Unknown argument type: ${type}`);
+  log.for('CommandTree').warn('Unknown argument type: %s', type);
   return null;
 }
 
@@ -448,7 +449,7 @@ function mergeCommandsFull(serverPacketData: Buffer): Buffer {
 
     return finalPacket;
   } catch (error) {
-    console.error('[Merge] Error:', error);
+    log.for('CommandTree').error('Merge error: %s', error);
     throw error;
   }
 }
@@ -516,7 +517,7 @@ function handleTabCompleteRequest(packetData: Buffer, player?: any): Buffer | nu
 
     return fullPacket;
   } catch (error) {
-    console.error('[TabComplete] Error:', error);
+    log.for('CommandTree').error('TabComplete error: %s', error);
     return null;
   }
 }
@@ -533,7 +534,7 @@ export default defineModule({
       try {
         return mergeCommandsData(packetData);
       } catch (error) {
-        console.error('[Commands] Merge failed:', error);
+        log.for('CommandTree').error('Commands merge failed: %s', error);
         return packetData;
       }
     });

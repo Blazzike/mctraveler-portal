@@ -1,4 +1,3 @@
-import { kSecondaryPort } from '@/config';
 import {
   acknowledgePlayerDiggingPacket,
   closeWindowClientPacket,
@@ -12,12 +11,14 @@ import {
 } from '@/defined-packets.gen';
 import { varInt } from '@/encoding/data-buffer';
 import { executeHook, FeatureHook } from '@/feature-api/manager';
+import { log } from '@/logging';
 import { defineModule } from '@/module-api/module';
 import HeldItemModule from '@/modules/HeldItemModule';
 import OnlinePlayersModule, { type OnlinePlayer } from '@/modules/OnlinePlayersModule';
 import { writePacket } from '@/network/defined-packet';
 import { onClientToServerPacket, onServerToClientPacket } from '@/network/packet-handlers';
 import type { LazilyParsedPacket } from '@/network/types';
+import { getWorldForPlayer } from '@/util/world';
 
 export interface ProtectionCheckData {
   player: OnlinePlayer;
@@ -50,17 +51,6 @@ function decodeBlockPosition(buffer: Buffer, offset: number): { x: number; y: nu
   if (y >= 0x800) y -= 0x1000;
 
   return { x, y, z };
-}
-
-function getWorldForPlayer(player: OnlinePlayer): string {
-  const base = player.currentServerPort === kSecondaryPort ? 'last' : 'world';
-  if (player.currentDimension === 'nether') {
-    return `${base}_nether`;
-  }
-  if (player.currentDimension === 'end') {
-    return `${base}_the_end`;
-  }
-  return base;
 }
 
 function trackContainerOpen(player: OnlinePlayer): void {
@@ -104,7 +94,7 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
         }
       }
     } catch (e) {
-      console.error('[Protection] Failed to parse block dig packet:', e);
+      log.for('Protection').error('Failed to parse block dig packet: %s', e);
     }
   }
 
@@ -125,7 +115,7 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
         return true;
       }
     } catch (e) {
-      console.error('[Protection] Failed to parse block place packet:', e);
+      log.for('Protection').error('Failed to parse block place packet: %s', e);
     }
   }
 
@@ -145,7 +135,7 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
         }
       }
     } catch (e) {
-      console.error('[Protection] Failed to parse window click packet:', e);
+      log.for('Protection').error('Failed to parse window click packet: %s', e);
     }
   }
 
@@ -165,7 +155,7 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
         return true;
       }
     } catch (e) {
-      console.error('[Protection] Failed to parse update sign packet:', e);
+      log.for('Protection').error('Failed to parse update sign packet: %s', e);
     }
   }
 
@@ -183,7 +173,7 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
         }
       }
     } catch (e) {
-      console.error('[Protection] Failed to parse use item packet:', e);
+      log.for('Protection').error('Failed to parse use item packet: %s', e);
     }
   }
 
@@ -207,7 +197,7 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
         return true;
       }
     } catch (e) {
-      console.error('[Protection] Failed to parse use entity packet:', e);
+      log.for('Protection').error('Failed to parse use entity packet: %s', e);
     }
   }
 

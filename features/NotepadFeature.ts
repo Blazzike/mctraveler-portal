@@ -3,6 +3,7 @@ import { anonymousNbt, string, varInt } from '@/encoding/data-buffer';
 import { registerCommand, syntax } from '@/feature-api/command';
 import { defineFeature, FeatureHook, registerHook } from '@/feature-api/manager';
 import p from '@/feature-api/paint';
+import { log } from '@/logging';
 import type { OnlinePlayer } from '@/modules/OnlinePlayersModule';
 import PersistenceModule from '@/modules/PersistenceModule';
 import { writePacket } from '@/network/defined-packet';
@@ -50,10 +51,7 @@ function buildWritableBookItem(pages: string[]): Buffer {
 
 function sendFakeBook(player: OnlinePlayer, pages: string[]): void {
   const socket = getPlayerSocket(player);
-  if (!socket) {
-    console.log('[Notepad] No socket for player');
-    return;
-  }
+  if (!socket) return;
 
   const itemData = buildWritableBookItem(pages);
 
@@ -62,8 +60,6 @@ function sendFakeBook(player: OnlinePlayer, pages: string[]): void {
   // Convert hotbar slot (0-8) to inventory slot (36-44)
   const inventorySlot = heldSlot + 36;
 
-  console.log(`[Notepad] Sending book to slot ${inventorySlot} (held slot ${heldSlot})`);
-
   const setSlot = writePacket(setSlotPacket, {
     windowId: 0,
     stateId: 0,
@@ -71,7 +67,6 @@ function sendFakeBook(player: OnlinePlayer, pages: string[]): void {
     item: itemData,
   });
   safeWrite(socket, setSlot);
-  console.log(`[Notepad] Sent set_slot packet, item data: ${itemData.toString('hex')}`);
 }
 
 function parseEditBookPages(packetData: Buffer): string[] {
@@ -114,10 +109,7 @@ function parseEditBookPages(packetData: Buffer): string[] {
 
 function triggerInventoryResync(player: OnlinePlayer): void {
   const serverSocket = getServerSocket(player);
-  if (!serverSocket) {
-    console.log('[Notepad] triggerInventoryResync: No server socket for player');
-    return;
-  }
+  if (!serverSocket) return;
 
   const heldSlot = playerHeldSlot.get(player) ?? 0;
   const inventorySlot = heldSlot + 36;
@@ -135,7 +127,6 @@ function triggerInventoryResync(player: OnlinePlayer): void {
     cursorItem: null, // Empty cursor
   });
   safeWrite(serverSocket, windowClick);
-  console.log(`[Notepad] Sent window_click to backend to trigger inventory resync for slot ${inventorySlot}`);
 }
 
 function clearNotepadSession(player: OnlinePlayer): void {
@@ -163,7 +154,7 @@ export default defineFeature({
         writeNotepadData(player.uuid, pages);
         player.sendMessage(p.success`Notepad saved`);
       } catch (error) {
-        console.error('[Notepad] Error parsing edit book packet:', error);
+        log.for('Notepad').error('Error parsing edit book packet: %s', error);
         player.sendMessage(p.error`Failed to save notepad`);
       }
 
@@ -172,12 +163,7 @@ export default defineFeature({
 
     // Track held slot and clear notepad session when player changes held item
     registerHook(FeatureHook.HeldItemChange, ({ player, packetData }) => {
-      console.log(`[Notepad] HeldItemChange packet hex: ${packetData.toString('hex')}`);
-
-      // The slot is a simple short (i16), not a varint
       const slot = packetData.readInt16BE(0);
-
-      console.log(`[Notepad] Held slot changed to ${slot} for ${player.username}`);
       playerHeldSlot.set(player, slot);
       clearNotepadSession(player);
     });
@@ -197,7 +183,6 @@ export default defineFeature({
 
       sendFakeBook(sender, pages);
       inNotepad.set(sender, true);
-      console.log(`[Notepad] Set inNotepad=true for ${sender.username}`);
     });
   },
 });

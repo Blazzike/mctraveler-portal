@@ -1,10 +1,9 @@
-import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { uuid as uuidHandler, varInt as varIntHandler } from '@/encoding/data-buffer';
 import { enableModule } from '@/module-api/module';
 import OnlinePlayersModule from '@/modules/OnlinePlayersModule';
 import TabListModule, { profilePropertiesMap } from '@/modules/TabListModule';
-import * as proxy from '@/network/proxy';
-import { broadcastPlayerJoin, broadcastPlayerLeave } from '@/network/proxy';
+import { _resetSocketLookup, _setSocketLookup, broadcastPlayerJoin, broadcastPlayerLeave } from '@/network/player-tracking';
 
 const { removePlayerFromTabList, handlePlayerRemovePacket } = TabListModule.api;
 const { clearOnlinePlayersForTesting, trackPlayerLogin: _trackPlayerLogin } = OnlinePlayersModule.api;
@@ -15,6 +14,7 @@ function trackPlayerLogin(uuid: string, username: string, socket?: any) {
 
 describe('tab-list', () => {
   beforeEach(() => {
+    enableModule(OnlinePlayersModule);
     enableModule(TabListModule);
   });
 
@@ -22,6 +22,7 @@ describe('tab-list', () => {
     clearOnlinePlayersForTesting();
     profilePropertiesMap.clear();
     TabListModule.api.clearForTesting();
+    _resetSocketLookup();
   });
 
   describe('removePlayerFromTabList', () => {
@@ -75,7 +76,7 @@ describe('tab-list', () => {
       const _player1 = trackPlayerLogin('uuid-1', 'Player1', mockSocket1 as any);
       const _player2 = trackPlayerLogin('uuid-2', 'Player2', mockSocket2 as any);
 
-      const getSocketSpy = spyOn(proxy, 'getPlayerSocket').mockImplementation((p) => {
+      _setSocketLookup((p: any) => {
         if (p.uuid === 'uuid-1') return mockSocket1 as any;
         if (p.uuid === 'uuid-2') return mockSocket2 as any;
         return undefined;
@@ -94,8 +95,6 @@ describe('tab-list', () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(writeCount).toBeGreaterThan(0);
-
-      getSocketSpy.mockRestore();
     });
 
     test('excludes specific player from broadcast', async () => {
@@ -103,7 +102,7 @@ describe('tab-list', () => {
 
       const _player = trackPlayerLogin('uuid-exclude', 'ExcludePlayer', mockSocket as any);
 
-      const getSocketSpy = spyOn(proxy, 'getPlayerSocket').mockReturnValue(mockSocket as any);
+      _setSocketLookup(() => mockSocket as any);
 
       let writeCount = 0;
       mockSocket.write = () => {
@@ -115,8 +114,6 @@ describe('tab-list', () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(writeCount).toBe(0);
-
-      getSocketSpy.mockRestore();
     });
   });
 
@@ -127,7 +124,7 @@ describe('tab-list', () => {
       trackPlayerLogin('uuid-leave-1', 'LeavePlayer1', mockSocket as any);
       trackPlayerLogin('uuid-leave-2', 'LeavePlayer2', mockSocket as any);
 
-      const getSocketSpy = spyOn(proxy, 'getPlayerSocket').mockReturnValue(mockSocket as any);
+      _setSocketLookup(() => mockSocket as any);
 
       let writeCount = 0;
       mockSocket.write = () => {
@@ -139,8 +136,6 @@ describe('tab-list', () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(writeCount).toBeGreaterThan(0);
-
-      getSocketSpy.mockRestore();
     });
 
     test('cleans up profile properties', () => {
@@ -181,7 +176,7 @@ describe('tab-list', () => {
 
       trackPlayerLogin('flow-uuid', 'FlowPlayer', mockSocket as any);
 
-      const getSocketSpy = spyOn(proxy, 'getPlayerSocket').mockReturnValue(mockSocket as any);
+      _setSocketLookup(() => mockSocket as any);
 
       broadcastPlayerJoin('flow-uuid', 'FlowPlayer');
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -190,8 +185,6 @@ describe('tab-list', () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(leavePacketSent).toBe(true);
-
-      getSocketSpy.mockRestore();
     });
   });
 });

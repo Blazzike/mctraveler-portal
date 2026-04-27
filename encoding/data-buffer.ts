@@ -532,7 +532,7 @@ export const anonymousNbt = createTypeHandler<any>({
         const nbtBuffer = nbtLib.writeUncompressed(parsed, 'big');
         size = nbtBuffer.length;
       } catch {
-        // If re-serialization fails, estimate based on buffer scan
+        // NBT re-serialization failed, fall back to buffer length estimate
         size = fullBuffer.length;
       }
     }

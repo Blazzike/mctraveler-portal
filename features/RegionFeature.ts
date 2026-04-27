@@ -1,6 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { kSecondaryPort } from '@/config';
 import {
   gameStateChangePacket,
   resetScorePacket,
@@ -12,11 +11,13 @@ import { anonymousNbt, boolean as booleanType, byte, string, varInt } from '@/en
 import { registerCommand, syntax } from '@/feature-api/command';
 import { defineFeature, FeatureHook, registerHook } from '@/feature-api/manager';
 import p, { type Paint } from '@/feature-api/paint';
+import { log } from '@/logging';
 import type { OnlinePlayer } from '@/modules/OnlinePlayersModule';
 import PersistenceModule from '@/modules/PersistenceModule';
 import { writePacket } from '@/network/defined-packet';
 import { getOnlinePlayers, getPlayerSocket } from '@/network/proxy';
 import { safeWrite } from '@/network/util';
+import { getWorldForPlayer } from '@/util/world';
 
 const { getUsernameFromUuid, isPlayerAdmin } = PersistenceModule.api;
 
@@ -67,7 +68,7 @@ const kObjectiveName = 'region';
 
 function loadRegions(): void {
   if (!existsSync(kRegionsPath)) {
-    console.log('[Regions] No regions.json found');
+    log.for('Regions').info('No regions.json found');
     return;
   }
 
@@ -110,9 +111,9 @@ function loadRegions(): void {
       }
     }
 
-    console.log(`[Regions] Loaded ${regions.length} regions`);
+    log.for('Regions').info('Loaded %d regions', regions.length);
   } catch (error) {
-    console.error('[Regions] Failed to load regions:', error);
+    log.for('Regions').error('Failed to load regions: %s', error);
   }
 }
 
@@ -159,17 +160,6 @@ function regionContains(region: Region, x: number, y: number, z: number): boolea
   const maxY = Math.max(region.start.y!, region.end.y!);
 
   return x >= minX && x <= maxX && z >= minZ && z <= maxZ && y >= minY && y <= maxY;
-}
-
-function getWorldForPlayer(player: OnlinePlayer): string {
-  const base = player.currentServerPort === kSecondaryPort ? 'last' : 'world';
-  if (player.currentDimension === 'nether') {
-    return `${base}_nether`;
-  }
-  if (player.currentDimension === 'end') {
-    return `${base}_the_end`;
-  }
-  return base;
 }
 
 function getRegionAt(x: number, y: number, z: number, world: string): Region | null {
@@ -770,16 +760,17 @@ ${p.green('/rg end')}`;
         return p.error`Regions may only be created on the same server. Use /rg start again.`;
       }
 
-      const dx = Math.abs(start.x - end.x);
-      const dz = Math.abs(start.z - end.z);
-      const distance = Math.sqrt(dx * dx + dz * dz);
+      // +1 because block coordinates are inclusive (e.g. 10 to 12 is 10, 11, 12 = 3 blocks)
+      const dx = Math.abs(start.x - end.x) + 1;
+      const dz = Math.abs(start.z - end.z) + 1;
+      const area = dx * dz;
 
-      if (distance <= 3) {
+      if (area <= 9) {
         return p.error`Region too small`;
       }
 
-      if (distance >= 15 && !isPlayerAdmin(sender.uuid)) {
-        return p.error`Region too large. Ask an admin to create it.`;
+      if (area > 5000 && !isPlayerAdmin(sender.uuid)) {
+        return p.error`Region too large (${Math.floor(area)} blocks). Limit is 5000 blocks. Ask an admin to create it.`;
       }
 
       const world = currentWorld;
@@ -1077,5 +1068,5 @@ ${p.gray` - `}${p.white`/rg locate <name>`}`;
   },
 });
 
-export { getRegionAt, isResident, playerCurrentRegion, regions };
 export type { Region };
+export { getRegionAt, isResident, playerCurrentRegion, regions };

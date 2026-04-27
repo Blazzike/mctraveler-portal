@@ -1,3 +1,4 @@
+import { log } from '@/logging';
 import type { OnlinePlayer } from '@/modules/OnlinePlayersModule';
 
 export type ModuleDefinition<TApi = unknown> = {
@@ -20,7 +21,7 @@ export function enableModule(module: ModuleDefinition): void {
     return;
   }
 
-  console.log(`[+ module] ${module.name}`);
+  log.for('Module').info('+ module %s', module.name);
   enabledModules.add(module.name);
   loadedModules.set(module.name, module);
   module.onEnable();

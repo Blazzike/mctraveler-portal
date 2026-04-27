@@ -54,6 +54,12 @@
     "exportName": "loginStartPacket"
   },
   {
+    "state": "login",
+    "direction": "toClient",
+    "name": "compress",
+    "exportName": "setCompressionPacket"
+  },
+  {
     "state": "play",
     "direction": "toServer",
     "name": "chat_command",
@@ -268,5 +274,11 @@
     "direction": "toClient",
     "name": "acknowledge_player_digging",
     "exportName": "acknowledgePlayerDiggingPacket"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "name": "spawn_entity",
+    "exportName": "spawnEntityPacket"
   }
 ]

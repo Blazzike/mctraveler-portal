@@ -1,4 +1,5 @@
 import { defineFeature, FeatureHook, registerHook } from '@/feature-api/manager';
+import { log } from '@/logging';
 
 interface ProfileRemap {
   newUsername: string;
@@ -17,7 +18,7 @@ export function getRemappedProfile(username: string): ProfileRemap | null {
 export default defineFeature({
   name: 'TravelPatch',
   onEnable: () => {
-    console.log(`[TravelPatch] Loaded ${profileRemaps.size} profile remaps`);
+    log.for('TravelPatch').info('Loaded %d profile remaps', profileRemaps.size);
 
     registerHook(FeatureHook.GetRemappedProfile, ({ username }) => {
       return getRemappedProfile(username);

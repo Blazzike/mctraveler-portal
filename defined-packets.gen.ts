@@ -94,6 +94,13 @@ export const loginStartPacket = definePacket({
   },
 });
 
+export const setCompressionPacket = definePacket({
+  id: 0x03,
+  fields: {
+    threshold: varInt,
+  },
+});
+
 export const chatCommandPacket = definePacket({
   id: 0x06,
   fields: {
@@ -435,6 +442,25 @@ export const acknowledgePlayerDiggingPacket = definePacket({
   id: 0x04,
   fields: {
     sequenceId: varInt,
+  },
+});
+
+export const spawnEntityPacket = definePacket({
+  id: 0x01,
+  fields: {
+    entityId: varInt,
+    objectUUID: uuid,
+    type: varInt,
+    x: double,
+    y: double,
+    z: double,
+    pitch: byte,
+    yaw: byte,
+    headPitch: byte,
+    objectData: varInt,
+    velocityX: short,
+    velocityY: short,
+    velocityZ: short,
   },
 });
 

@@ -21,7 +21,8 @@
       "recommended": true,
       "suspicious": {
         "noExplicitAny": "off",
-        "noArrayIndexKey": "off"
+        "noArrayIndexKey": "off",
+        "noConfusingVoidType": "off"
       },
       "style": {
         "noNonNullAssertion": "off",
@@ -29,6 +30,9 @@
       },
       "complexity": {
         "noForEach": "off"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "off"
       }
     }
   },
