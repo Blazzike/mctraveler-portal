@@ -10,7 +10,7 @@ packet interception, and seamless server switching.
 ## 🚀 Features
 
 - **Custom Proxy Implementation**: Built from scratch to handle Minecraft
-  protocol version 1.21.10 (1.21.10).
+  protocol version 1.21.10.
 - **Feature System**: Modular architecture where functionality (chat, MOTD, tab
   list, etc.) is isolated into "Features" that hook into network events.
 - **Module System**: Shared services and state management (e.g.,
@@ -26,7 +26,7 @@ packet interception, and seamless server switching.
 ## 📋 Prerequisites
 
 - **[Bun](https://bun.sh/)**: Required for the runtime and package management.
-- **Java 25+**: Required to run the backend Minecraft servers. Automatically
+- **Java 21+**: Required to run the backend Minecraft servers. Automatically
   downloaded and installed by the launcher.
 
 ## 🛠️ Installation
@@ -152,7 +152,7 @@ features and expose typed `.api` objects.
 | `TabListModule`            | Global tab list, profile properties     |
 | `PersistenceModule`        | Player data persistence to disk         |
 | `SyncModule`               | Syncs player data between servers       |
-| `ProtectionHooksModule`    | Block/container/sign protection checks  |
+| `ProtectionHooksModule`    | Block/container/sign/interact protection|
 | `CommandsInjectionModule`  | Merges custom commands into server tree |
 | `HeldItemModule`           | Tracks held item slot                   |
 | `PlayerInfoBitflagsModule` | Rewrites player info with Mojang skins  |
