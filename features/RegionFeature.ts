@@ -11,6 +11,7 @@ import { anonymousNbt, boolean as booleanType, byte, string, varInt } from '@/en
 import { registerCommand, syntax } from '@/feature-api/command';
 import { defineFeature, FeatureHook, registerHook } from '@/feature-api/manager';
 import p, { type Paint } from '@/feature-api/paint';
+import { log } from '@/logging';
 import type { OnlinePlayer } from '@/modules/OnlinePlayersModule';
 import PersistenceModule from '@/modules/PersistenceModule';
 import { writePacket } from '@/network/defined-packet';
@@ -67,7 +68,7 @@ const kObjectiveName = 'region';
 
 function loadRegions(): void {
   if (!existsSync(kRegionsPath)) {
-    console.log('[Regions] No regions.json found');
+    log.for('Regions').info('No regions.json found');
     return;
   }
 
@@ -110,9 +111,9 @@ function loadRegions(): void {
       }
     }
 
-    console.log(`[Regions] Loaded ${regions.length} regions`);
+    log.for('Regions').info('Loaded %d regions', regions.length);
   } catch (error) {
-    console.error('[Regions] Failed to load regions:', error);
+    log.for('Regions').error('Failed to load regions: %s', error);
   }
 }
 
@@ -1067,5 +1068,5 @@ ${p.gray` - `}${p.white`/rg locate <name>`}`;
   },
 });
 
-export { getRegionAt, isResident, playerCurrentRegion, regions };
 export type { Region };
+export { getRegionAt, isResident, playerCurrentRegion, regions };

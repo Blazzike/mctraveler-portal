@@ -3,6 +3,7 @@ import { anonymousNbt, string, varInt } from '@/encoding/data-buffer';
 import { registerCommand, syntax } from '@/feature-api/command';
 import { defineFeature, FeatureHook, registerHook } from '@/feature-api/manager';
 import p from '@/feature-api/paint';
+import { log } from '@/logging';
 import type { OnlinePlayer } from '@/modules/OnlinePlayersModule';
 import PersistenceModule from '@/modules/PersistenceModule';
 import { writePacket } from '@/network/defined-packet';
@@ -153,7 +154,7 @@ export default defineFeature({
         writeNotepadData(player.uuid, pages);
         player.sendMessage(p.success`Notepad saved`);
       } catch (error) {
-        console.error('[Notepad] Error parsing edit book packet:', error);
+        log.for('Notepad').error('Error parsing edit book packet: %s', error);
         player.sendMessage(p.error`Failed to save notepad`);
       }
 

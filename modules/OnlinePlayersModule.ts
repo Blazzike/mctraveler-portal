@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type net from 'node:net';
 import { systemChatPacket } from '@/defined-packets.gen';
 import { FeatureHook, registerHook } from '@/feature-api/manager';
+import { log } from '@/logging';
 import { defineModule } from '@/module-api/module';
 import { writePacket } from '@/network/defined-packet';
 import { safeWrite } from '@/network/util';
@@ -40,8 +41,8 @@ function sendMessageToPlayer(player: OnlinePlayer, message: any): void {
     const nbt = typeof message === 'string' ? { text: message } : message.toNbtObject ? message.toNbtObject() : message;
     const packet = writePacket(systemChatPacket, { content: nbt, isActionBar: false });
     safeWrite(sock, packet);
-  } catch {
-    // Socket closed, ignore
+  } catch (e) {
+    log.for('Players').debug('Failed to send message to %s: %s', player.username, e);
   }
 }
 
@@ -108,7 +109,7 @@ export default defineModule({
         playerSockets.set(player, socket);
       }
 
-      console.log(`[+ player] ${username}${isPremium ? '' : ' (offline)'}`);
+      log.for('Players').info('+ player %s%s', username, isPremium ? '' : ' (offline)');
 
       return player;
     },
@@ -116,7 +117,7 @@ export default defineModule({
     trackPlayerLogout(uuid: string): void {
       const player = onlinePlayers.get(uuid);
       if (player) {
-        console.log(`[- player] ${player.username}`);
+        log.for('Players').info('- player %s', player.username);
         offlineUuidToOnlineUuid.delete(player.offlineUuid);
         onlinePlayers.delete(uuid);
       }
@@ -221,7 +222,7 @@ export default defineModule({
         onlinePlayers.set(data.uuid, player);
         offlineUuidToOnlineUuid.set(playerOfflineUuid, data.uuid);
         if (data.socket) playerSockets.set(player, data.socket);
-        console.log(`[+ player] ${data.username}${data.isPremium ? '' : ' (offline)'}`);
+        log.for('Players').info('+ player %s%s', data.username, data.isPremium ? '' : ' (offline)');
         return player;
       }
     );
@@ -229,7 +230,7 @@ export default defineModule({
     registerHook(FeatureHook.TrackPlayerLogout, ({ uuid }: { uuid: string }) => {
       const player = onlinePlayers.get(uuid);
       if (player) {
-        console.log(`[- player] ${player.username}`);
+        log.for('Players').info('- player %s', player.username);
         offlineUuidToOnlineUuid.delete(player.offlineUuid);
         onlinePlayers.delete(uuid);
       }

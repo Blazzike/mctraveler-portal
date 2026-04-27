@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import * as nbt from 'prismarine-nbt';
 import { kSecondaryPort } from '@/config';
+import { log } from '@/logging';
 import { defineModule } from '@/module-api/module';
 
 const SERVERS_BASE = 'minecraft-server';
@@ -39,13 +40,13 @@ export default defineModule({
   name: 'Sync',
   api: {
     async syncPlayerData(uuid: string, fromPort: number, toPort: number): Promise<void> {
-      console.log(`[Sync] Syncing data for ${uuid} from ${fromPort} to ${toPort}`);
+      log.for('Sync').info('Syncing data for %s from %d to %d', uuid, fromPort, toPort);
 
       const sourcePath = getPlayerDataPath(fromPort, uuid);
       const targetPath = getPlayerDataPath(toPort, uuid);
 
       if (!existsSync(sourcePath)) {
-        console.warn(`[Sync] Source data not found at ${sourcePath}`);
+        log.for('Sync').warn('Source data not found at %s', sourcePath);
         return;
       }
 
@@ -84,9 +85,9 @@ export default defineModule({
         const compressed = gzipSync(uncompressed);
 
         writeFileSync(targetPath, compressed);
-        console.log(`[Sync] Synced ${uuid} to ${targetPath}`);
+        log.for('Sync').info('Synced %s to %s', uuid, targetPath);
       } catch (error) {
-        console.error(`[Sync] Failed to sync player data:`, error);
+        log.for('Sync').error('Failed to sync player data: %s', error);
       }
     },
   },

@@ -11,6 +11,7 @@ import {
 } from '@/defined-packets.gen';
 import { varInt } from '@/encoding/data-buffer';
 import { executeHook, FeatureHook } from '@/feature-api/manager';
+import { log } from '@/logging';
 import { defineModule } from '@/module-api/module';
 import HeldItemModule from '@/modules/HeldItemModule';
 import OnlinePlayersModule, { type OnlinePlayer } from '@/modules/OnlinePlayersModule';
@@ -93,7 +94,7 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
         }
       }
     } catch (e) {
-      console.error('[Protection] Failed to parse block dig packet:', e);
+      log.for('Protection').error('Failed to parse block dig packet: %s', e);
     }
   }
 
@@ -114,7 +115,7 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
         return true;
       }
     } catch (e) {
-      console.error('[Protection] Failed to parse block place packet:', e);
+      log.for('Protection').error('Failed to parse block place packet: %s', e);
     }
   }
 
@@ -134,7 +135,7 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
         }
       }
     } catch (e) {
-      console.error('[Protection] Failed to parse window click packet:', e);
+      log.for('Protection').error('Failed to parse window click packet: %s', e);
     }
   }
 
@@ -154,7 +155,7 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
         return true;
       }
     } catch (e) {
-      console.error('[Protection] Failed to parse update sign packet:', e);
+      log.for('Protection').error('Failed to parse update sign packet: %s', e);
     }
   }
 
@@ -172,7 +173,7 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
         }
       }
     } catch (e) {
-      console.error('[Protection] Failed to parse use item packet:', e);
+      log.for('Protection').error('Failed to parse use item packet: %s', e);
     }
   }
 
@@ -196,7 +197,7 @@ function checkProtection(packet: LazilyParsedPacket, player: OnlinePlayer, clien
         return true;
       }
     } catch (e) {
-      console.error('[Protection] Failed to parse use entity packet:', e);
+      log.for('Protection').error('Failed to parse use entity packet: %s', e);
     }
   }
 

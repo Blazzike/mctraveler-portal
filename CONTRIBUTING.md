@@ -8,8 +8,7 @@ Portal proxy.
 ### Prerequisites
 
 - **[Bun](https://bun.sh/)** (Runtime & Package Manager)
-- **Java 21+** (Automatically downloaded by the launcher if missing, but good to
-  have)
+- **Java 21+** (Automatically downloaded by the launcher if missing)
 
 ### Installation
 
@@ -17,6 +16,7 @@ Clone the repository and install dependencies:
 
 ```bash
 bun install
+cp .env.example .env  # Optional — defaults work out of the box
 ```
 
 ## 🛠️ Running the Project
@@ -62,28 +62,131 @@ We use Bun's built-in test runner.
   ```bash
   bun test
   ```
-
 - **Run tests in watch mode**:
   ```bash
   bun test --watch
   ```
+- **Type check**:
+  ```bash
+  bun run typecheck
+  ```
 
 ## 🏗️ Architecture Overview
 
-This project is a custom Minecraft Proxy written in TypeScript.
-
-- **`network/`**: Core networking logic. `proxy.ts` handles connections,
-  `packet-handlers.ts` routes packets.
-- **`features/`**: Game logic is isolated into "Features".
-  - **Adding a new feature**: Create a file in `features/` (e.g.,
-    `MyNewFeature.ts`), implement `onEnable`, and register it in
-    `features/registry.ts`.
-- **`modules/`**: Shared services (like `OnlinePlayersModule`) that features can
-  depend on.
+This project is a custom Minecraft Proxy written in TypeScript. See
+[README.md](README.md) for the full architecture breakdown.
 
 ### Connecting
 
-Connect your Minecraft client (Version **1.21.10**) to: `localhost:25565`
+Connect your Minecraft client (Version **1.21.10**) to:
+`localhost:25565`
+
+### Connection Lifecycle
+
+Each client connection is managed by a `ConnectionHandler` instance
+(`network/connection-handler.ts`) that progresses through states defined in the
+`ConnectionState` enum:
+
+```
+Login → Configuration → Play
+```
+
+- **Login**: Handles handshake, encryption, Mojang authentication, and
+  `Login Success`.
+- **Configuration**: Forwards configuration packets (client settings, known
+  packs). Transitions to Play on `Finish Configuration`.
+- **Play**: Full packet handling with hooks, transforms, and server switching.
+
+Server switching re-enters the Login→Configuration→Play cycle on a new backend
+port, using a dimension-switch trick to avoid chunk corruption.
+
+## 📝 How-Tos
+
+### Adding a New Feature
+
+1. Create a file in `features/` (e.g., `MyFeature.ts`):
+
+```typescript
+import {
+  defineFeature,
+  FeatureHook,
+  registerHook,
+} from "@/feature-api/manager";
+
+export default defineFeature({
+  name: "MyFeature",
+  onEnable: () => {
+    registerHook(FeatureHook.PlayerChat, ({ player, message }) => {
+      // Handle chat
+    });
+  },
+});
+```
+
+2. Register it in `features/registry.ts` by importing and adding to the array.
+
+### Adding a New Module
+
+1. Create a file in `modules/` (e.g., `MyModule.ts`):
+
+```typescript
+import { defineModule } from "@/module-api/module";
+
+export default defineModule({
+  name: "MyModule",
+  api: {
+    doSomething() {/* ... */},
+  },
+  onEnable: () => {
+    // Set up hooks, packet handlers, etc.
+  },
+});
+```
+
+2. Enable it from a feature's `onEnable`:
+
+```typescript
+import MyModule from "@/modules/MyModule";
+
+defineFeature({
+  name: "MyFeature",
+  onEnable: () => {
+    enableModule(MyModule);
+    MyModule.api.doSomething();
+  },
+});
+```
+
+### Adding a New Hook
+
+1. Add an entry to the `FeatureHook` enum in `feature-api/manager.ts`.
+2. Add a corresponding entry to the `HookMap` interface with `data` and `return`
+   types.
+3. Call `registerHook(FeatureHook.YourHook, callback)` to register listeners.
+4. Call `executeHook(FeatureHook.YourHook, data)` or
+   `executeHookFirst(FeatureHook.YourHook, data)` to invoke them — these are
+   type-safe via `HookMap` overloads.
+
+### Adding a New Packet
+
+1. Add the packet definition to `defined-packets.json`.
+2. Run `bun generate-packets` to regenerate `defined-packets.gen.ts`.
+3. See `docs/protocol.json` for packet name references.
+
+### Using Structured Logging
+
+```typescript
+import { log } from "@/logging";
+
+const logger = log.for("MyComponent");
+logger.info("Player %s joined on port %d", username, port);
+logger.warn("Something unexpected: %s", reason);
+logger.error("Failed: %s", error);
+logger.debug("Verbose detail: %d items", count);
+```
+
+- **Production**: Only `warn` and `error` are shown.
+- **Development**: All levels are shown.
 
 ## 🎨 Code Style
 

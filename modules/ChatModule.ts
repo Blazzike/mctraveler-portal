@@ -18,6 +18,7 @@ function parseChatMessage(packetId: number, packetData: Buffer): string | null {
     }
     return message;
   } catch {
+    // Packet data too short to read chat message
     return null;
   }
 }

@@ -1,3 +1,5 @@
+import { log } from '@/logging';
+
 export function getParserPropertySize(parserID: number, buffer: Buffer, offset: number): number {
   let size = 0;
   let b: number;
@@ -145,7 +147,7 @@ export function getParserPropertySize(parserID: number, buffer: Buffer, offset: 
       return 0;
 
     default:
-      console.warn(`[Parser] Unknown parser ID ${parserID}`);
+      log.for('Parser').warn('Unknown parser ID %d', parserID);
       return 0;
   }
 }

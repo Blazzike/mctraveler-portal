@@ -1,5 +1,6 @@
 import type { Paint } from '@/feature-api/paint';
 import p from '@/feature-api/paint';
+import { log } from '@/logging';
 import OnlinePlayersModule, { type OnlinePlayer } from '@/modules/OnlinePlayersModule';
 
 function getPlayerByUsername(username: string) {
@@ -88,7 +89,7 @@ class CommandPattern<T extends readonly SyntaxParser[]> {
 
     if (wordIndex < inputWords.length) {
       const lastPart = this.parts[this.parts.length - 1];
-      const isRestParser = lastPart && typeof lastPart !== 'string' && lastPart.toString && lastPart.toString().includes('...');
+      const isRestParser = lastPart && typeof lastPart !== 'string' && lastPart.toString?.().includes('...');
       if (!isRestParser) {
         return { matches: false, args: {} as TupleToArgsObject<T> };
       }
@@ -229,11 +230,11 @@ export function executeCommand(player: OnlinePlayer | any, commandStr: string): 
       };
 
       try {
-        console.log(`${player.name}: /${commandStr} (${cmd.pattern})`);
+        log.for('Commands').info('%s: /%s (%s)', player.name, commandStr, cmd.pattern);
         const commandResult = cmd.handler(context);
         return commandResult === undefined ? true : commandResult;
       } catch (error) {
-        console.error(`Error executing command /${commandStr}:`, error);
+        log.for('Commands').error('Error executing command /%s: %s', commandStr, error);
         return true;
       }
     } else if (result.error) {
@@ -245,7 +246,7 @@ export function executeCommand(player: OnlinePlayer | any, commandStr: string): 
     return lastError;
   }
 
-  console.log(`${player.name}: /${commandStr} (Invalid command)`);
+  log.for('Commands').info('%s: /%s (Invalid command)', player.name, commandStr);
   return false;
 }
 

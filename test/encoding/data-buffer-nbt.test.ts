@@ -207,6 +207,47 @@ test('anonymousNbt > roundtrip with extra array', () => {
   expect(decoded.extra[1].color).toBe('blue');
 });
 
+test('anonymousNbt > supplementary emoji uses Modified UTF-8 encoding', () => {
+  const input = { text: '😀' };
+  const encoded = anonymousNbt(input);
+
+  const bytes = [...encoded];
+  const has4ByteUtf8 = bytes.some((b) => b >= 0xf0 && b <= 0xf4);
+  expect(has4ByteUtf8).toBe(false);
+
+  const hexStr = encoded.toString('hex');
+  expect(hexStr).toContain('eda0bdedb880');
+});
+
+test('anonymousNbt > BMP emoji encodes normally', () => {
+  const input = { text: '\u26A0' };
+  const encoded = anonymousNbt(input);
+  const decoded = anonymousNbt.read(encoded);
+
+  expect(decoded.text).toBe('\u26A0');
+});
+
+test('anonymousNbt > supplementary chars in nested extra array', () => {
+  const input = {
+    text: '',
+    extra: [{ text: 'Player', color: 'green' }, { text: ' 🪲 hello 😀' }],
+  };
+  const encoded = anonymousNbt(input);
+
+  const bytes = [...encoded];
+  const has4ByteUtf8 = bytes.some((b) => b >= 0xf0 && b <= 0xf4);
+  expect(has4ByteUtf8).toBe(false);
+});
+
+test('nbt > supplementary emoji uses Modified UTF-8 encoding', () => {
+  const input = { text: '😀 hello 🪲' };
+  const encoded = nbt(input);
+
+  const bytes = [...encoded];
+  const has4ByteUtf8 = bytes.some((b) => b >= 0xf0 && b <= 0xf4);
+  expect(has4ByteUtf8).toBe(false);
+});
+
 test('anonymousNbt > bytesRead tracking', () => {
   const input = { text: 'Test' };
   const encoded = anonymousNbt(input);

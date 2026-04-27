@@ -51,14 +51,13 @@ test('executeHook > with data parameter', () => {
 
   registerHook(hook, (data) => {
     receivedData = data;
-    return data?.message;
   });
 
   const testData = { message: 'Hello World' };
   const results = executeHook(hook, testData);
 
   expect(receivedData).toEqual(testData);
-  expect(results).toContain('Hello World');
+  expect(results).toEqual([undefined]);
 });
 
 test('executeHook > returns empty array for unregistered hook', () => {

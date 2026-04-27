@@ -1,16 +1,17 @@
 #!/usr/bin/env bun
 import { join, resolve } from 'node:path';
 import dedent from 'dedent';
-import { kIsProduction, kProtocolVersionString, kSecondaryPort } from './config';
+import { kIsProduction, kMcMemoryMax, kMcMemoryMin, kProtocolVersionString, kSecondaryPort } from './config';
+import { log } from './logging';
 
 type ServerType = 'primary' | 'secondary';
 
 const serverType = process.argv[2] as ServerType;
 
 if (serverType !== 'primary' && serverType !== 'secondary') {
-  console.error('Usage: bun minecraft-server.ts [primary|secondary]');
-  console.error('  primary  - Runs on port 25566 in primary/ directory');
-  console.error('  secondary - Runs on port 25567 in secondary/ directory');
+  log.for('MCServer').error('Usage: bun minecraft-server.ts [primary|secondary]');
+  log.for('MCServer').error('  primary  - Runs on port 25566 in primary/ directory');
+  log.for('MCServer').error('  secondary - Runs on port 25567 in secondary/ directory');
   process.exit(1);
 }
 
@@ -29,7 +30,7 @@ function getJavaExecutablePath(): string {
 }
 
 async function downloadFile(url: string, outputPath: string): Promise<void> {
-  console.log(`Downloading ${url} to ${outputPath}...`);
+  log.for('MCServer').info('Downloading %s to %s...', url, outputPath);
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -40,11 +41,11 @@ async function downloadFile(url: string, outputPath: string): Promise<void> {
   const buffer = Buffer.from(arrayBuffer);
 
   await Bun.write(outputPath, buffer);
-  console.log(`Downloaded ${outputPath}`);
+  log.for('MCServer').info('Downloaded %s', outputPath);
 }
 
 async function extractTarGz(tarPath: string, extractDir: string): Promise<void> {
-  console.log(`Extracting ${tarPath} to ${extractDir}...`);
+  log.for('MCServer').info('Extracting %s to %s...', tarPath, extractDir);
 
   const proc = Bun.spawn(['tar', '-xzf', tarPath, '-C', extractDir, '--strip-components=1'], {
     stdio: ['inherit', 'inherit', 'inherit'],
@@ -56,15 +57,28 @@ async function extractTarGz(tarPath: string, extractDir: string): Promise<void> 
   }
 }
 
+async function extractZip(zipPath: string, extractDir: string): Promise<void> {
+  log.for('MCServer').info('Extracting %s to %s...', zipPath, extractDir);
+
+  const proc = Bun.spawn(['tar', '-xf', zipPath, '-C', extractDir, '--strip-components=1'], {
+    stdio: ['inherit', 'inherit', 'inherit'],
+  });
+
+  const exitCode = await proc.exited;
+  if (exitCode !== 0) {
+    throw new Error(`zip extraction failed with code ${exitCode}`);
+  }
+}
+
 async function downloadAndInstallJava(): Promise<void> {
   const javaExecutable = getJavaExecutablePath();
   const javaFile = Bun.file(javaExecutable);
   if (await javaFile.exists()) {
-    console.log('Java already installed, skipping download.');
+    log.for('MCServer').info('Java already installed, skipping download.');
     return;
   }
 
-  console.log('Java not found, downloading and installing...');
+  log.for('MCServer').info('Java not found, downloading and installing...');
 
   await Bun.write(join(WORK_DIR, '.keep'), '');
   await Bun.write(join(JAVA_DIR, '.keep'), '');
@@ -99,13 +113,17 @@ async function downloadAndInstallJava(): Promise<void> {
 
   try {
     await downloadFile(javaUrl, javaArchivePath);
-    await extractTarGz(javaArchivePath, JAVA_DIR);
+    if (process.platform === 'win32') {
+      await extractZip(javaArchivePath, JAVA_DIR);
+    } else {
+      await extractTarGz(javaArchivePath, JAVA_DIR);
+    }
 
     await Bun.write(javaArchivePath, '');
 
-    console.log('Java installation completed!');
+    log.for('MCServer').info('Java installation completed!');
   } catch (error) {
-    console.error('Failed to install Java:', error);
+    log.for('MCServer').error('Failed to install Java: %s', error);
     throw error;
   }
 }
@@ -113,7 +131,7 @@ async function downloadAndInstallJava(): Promise<void> {
 async function getMinecraftVersion(): Promise<string> {
   const pinnedVersion = kProtocolVersionString;
 
-  console.log('Checking for Minecraft version updates...');
+  log.for('MCServer').info('Checking for Minecraft version updates...');
 
   try {
     const response = await fetch('https://launchermeta.mojang.com/mc/game/version_manifest.json');
@@ -122,13 +140,13 @@ async function getMinecraftVersion(): Promise<string> {
       const latestVersion = manifest.latest.release;
 
       if (latestVersion === pinnedVersion) {
-        console.log(`Using Minecraft version ${pinnedVersion} (latest)`);
+        log.for('MCServer').info('Using Minecraft version %s (latest)', pinnedVersion);
       } else {
-        console.log(`Using Minecraft version ${pinnedVersion} (latest available: ${latestVersion})`);
+        log.for('MCServer').info('Using Minecraft version %s (latest available: %s)', pinnedVersion, latestVersion);
       }
     }
   } catch {
-    console.log(`Using Minecraft version ${pinnedVersion} (could not check for updates)`);
+    log.for('MCServer').info('Using Minecraft version %s (could not check for updates)', pinnedVersion);
   }
 
   return pinnedVersion;
@@ -139,11 +157,11 @@ async function downloadMinecraftServer(version: string): Promise<string> {
   const serverFile = Bun.file(serverJarPath);
 
   if (await serverFile.exists()) {
-    console.log(`Minecraft server ${version} already exists, skipping download.`);
+    log.for('MCServer').info('Minecraft server %s already exists, skipping download.', version);
     return serverJarPath;
   }
 
-  console.log(`Downloading Minecraft server ${version}...`);
+  log.for('MCServer').info('Downloading Minecraft server %s...', version);
 
   const manifestResponse = await fetch('https://launchermeta.mojang.com/mc/game/version_manifest.json');
   const manifest = (await manifestResponse.json()) as any;
@@ -166,7 +184,7 @@ async function downloadMinecraftServer(version: string): Promise<string> {
 async function setupServerFiles(serverDir: string, port: number): Promise<void> {
   const eulaPath = join(serverDir, 'eula.txt');
   await Bun.write(eulaPath, 'eula=true\n');
-  console.log('EULA accepted.');
+  log.for('MCServer').info('EULA accepted.');
   const serverPropertiesPath = join(serverDir, 'server.properties');
   if (!(await Bun.file(serverPropertiesPath).exists())) {
     const serverProperties = dedent`
@@ -178,9 +196,9 @@ async function setupServerFiles(serverDir: string, port: number): Promise<void> 
     `;
 
     await Bun.write(serverPropertiesPath, serverProperties);
-    console.log(`Server properties configured (offline mode, port ${port}).`);
+    log.for('MCServer').info('Server properties configured (offline mode, port %d).', port);
   } else {
-    console.log('Server properties already exist, skipping configuration.');
+    log.for('MCServer').info('Server properties already exist, skipping configuration.');
   }
 }
 
@@ -189,25 +207,24 @@ async function startMinecraftServer(javaPath: string, serverJarPath: string, por
 
   await setupServerFiles(serverDir, port);
 
-  console.log('Starting Minecraft server...');
-  console.log('Press Ctrl+C to stop the server');
+  log.for('MCServer').info('Starting Minecraft server...');
+  log.for('MCServer').info('Press Ctrl+C to stop the server');
 
   const absoluteJavaPath = resolve(javaPath);
   const absoluteServerJarPath = resolve(serverJarPath);
   const absoluteServerDir = resolve(serverDir);
 
-  console.log(`Java path: ${absoluteJavaPath}`);
-  console.log(`Server jar: ${absoluteServerJarPath}`);
-  console.log(`Working directory: ${absoluteServerDir}`);
+  log.for('MCServer').info('Java path: %s', absoluteJavaPath);
+  log.for('MCServer').info('Server jar: %s', absoluteServerJarPath);
+  log.for('MCServer').info('Working directory: %s', absoluteServerDir);
 
-  const memorySize = '8G';
-  console.log(`Memory: ${memorySize} (Mode: ${kIsProduction ? 'production' : 'development'})`);
+  log.for('MCServer').info('Memory: max=%s min=%s (Mode: %s)', kMcMemoryMax, kMcMemoryMin, kIsProduction ? 'production' : 'development');
 
   const serverProcess = Bun.spawn(
     [
       absoluteJavaPath,
-      `-Xmx${memorySize}`,
-      `-Xms${memorySize}`,
+      `-Xmx${kMcMemoryMax}`,
+      `-Xms${kMcMemoryMin}`,
       '-XX:+UseG1GC',
       '-XX:+ParallelRefProcEnabled',
       '-XX:MaxGCPauseMillis=200',
@@ -245,7 +262,7 @@ async function startMinecraftServer(javaPath: string, serverJarPath: string, por
     }
 
     isShuttingDown = true;
-    console.log('\nShutting down Minecraft server...');
+    log.for('MCServer').info('Shutting down Minecraft server...');
     serverProcess.kill('SIGINT');
   };
 
@@ -253,11 +270,11 @@ async function startMinecraftServer(javaPath: string, serverJarPath: string, por
 
   const exitCode = await serverProcess.exited;
   process.off('SIGINT', sigintHandler);
-  console.log(`Minecraft server exited with code ${exitCode}`);
+  log.for('MCServer').info('Minecraft server exited with code %d', exitCode);
   return exitCode;
 }
 
-console.log(`Starting ${serverType} server on port ${SERVER_PORT}...`);
+log.for('MCServer').info('Starting %s server on port %d...', serverType, SERVER_PORT);
 
 await downloadAndInstallJava();
 const version = await getMinecraftVersion();
@@ -277,22 +294,22 @@ while (retryCount < MAX_RETRIES) {
   // If the server was up for more than the threshold, we consider it a successful run
   // and reset the retry count.
   if (duration > SUCCESS_THRESHOLD_MS) {
-    console.log('Server was running for a while, resetting retry count.');
+    log.for('MCServer').info('Server was running for a while, resetting retry count.');
     retryCount = 0;
   }
 
   // If it was a clean exit (SIGINT/Ctrl+C usually leads to exit code 130 or 0), don't retry
   if (exitCode === 0 || exitCode === 130) {
-    console.log('Server stopped normally.');
+    log.for('MCServer').info('Server stopped normally.');
     process.exit(0);
   }
 
   retryCount++;
   if (retryCount < MAX_RETRIES) {
-    console.log(`Server crashed! Retrying (${retryCount}/${MAX_RETRIES}) in 5 seconds...`);
+    log.for('MCServer').info('Server crashed! Retrying (%d/%d) in 5 seconds...', retryCount, MAX_RETRIES);
     await new Promise((resolve) => setTimeout(resolve, 5000));
   } else {
-    console.error(`Server crashed ${MAX_RETRIES} times. Giving up.`);
+    log.for('MCServer').error('Server crashed %d times. Giving up.', MAX_RETRIES);
     process.exit(exitCode);
   }
 }

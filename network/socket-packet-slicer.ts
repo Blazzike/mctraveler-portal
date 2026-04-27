@@ -3,16 +3,16 @@ import { varInt } from '../encoding/data-buffer';
 import type { SocketLike } from './types';
 
 export function createSocketPacketSlicer(socket: SocketLike, callback: (packetId: number, packetData: Buffer) => void) {
-  let buffer = Buffer.alloc(0);
+  let buffer: Buffer<ArrayBuffer> = Buffer.alloc(0);
 
   const dataHandler = (data: Buffer) => {
-    let processedData = data;
+    let processedData: Buffer<ArrayBuffer> = data as Buffer<ArrayBuffer>;
     if ((socket as any)._encryptionEnabled && (socket as any)._encryptionDecipher) {
       const decipher = (socket as any)._encryptionDecipher;
-      processedData = decipher.update(data);
+      processedData = decipher.update(data) as Buffer<ArrayBuffer>;
     }
 
-    buffer = Buffer.concat([buffer, processedData]);
+    buffer = buffer.length === 0 ? processedData : Buffer.concat([buffer, processedData]);
     const compressionEnabled = (socket as any)._compressionEnabled;
 
     while (socket.readyState === 'open' || socket.readyState === 'opening') {

@@ -31,19 +31,20 @@ export const boolean = createTypeHandler<boolean>({
   }),
 });
 
+const varIntWriteBuf = Buffer.allocUnsafe(5);
+
 export const varInt = createTypeHandler<number>({
   write: (value) => {
-    const bytes: number[] = [];
-
     let unsignedValue = value >>> 0;
+    let i = 0;
 
     while (unsignedValue >= 0x80) {
-      bytes.push((unsignedValue & 0x7f) | 0x80);
+      varIntWriteBuf[i++] = (unsignedValue & 0x7f) | 0x80;
       unsignedValue >>>= 7;
     }
-    bytes.push(unsignedValue & 0x7f);
+    varIntWriteBuf[i++] = unsignedValue & 0x7f;
 
-    return Buffer.from(bytes);
+    return Buffer.from(varIntWriteBuf.subarray(0, i));
   },
   read: (buffer) => {
     let value = 0;
@@ -478,6 +479,144 @@ function convertToNBT(obj: any): any {
   return null;
 }
 
+function encodeModifiedUtf8(str: string): Buffer {
+  const parts: number[] = [];
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if (code === 0) {
+      parts.push(0xc0, 0x80);
+    } else if (code <= 0x7f) {
+      parts.push(code);
+    } else if (code <= 0x7ff) {
+      parts.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));
+    } else {
+      parts.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));
+    }
+  }
+  return Buffer.from(parts);
+}
+
+function hasSupplementaryChars(obj: any): boolean {
+  if (typeof obj === 'string') {
+    for (let i = 0; i < obj.length; i++) {
+      const code = obj.charCodeAt(i);
+      if (code >= 0xd800 && code <= 0xdbff) return true;
+    }
+    return false;
+  }
+  if (Array.isArray(obj)) return obj.some(hasSupplementaryChars);
+  if (typeof obj === 'object' && obj !== null) return Object.values(obj).some(hasSupplementaryChars);
+  return false;
+}
+
+function patchNbtStrings(buf: Buffer): Buffer {
+  let offset = 0;
+  let lastCopied = 0;
+  const chunks: Buffer[] = [];
+
+  function readTagPayload(tagType: number) {
+    switch (tagType) {
+      case 0:
+        break;
+      case 1:
+        offset += 1;
+        break;
+      case 2:
+        offset += 2;
+        break;
+      case 3:
+        offset += 4;
+        break;
+      case 4:
+        offset += 8;
+        break;
+      case 5:
+        offset += 4;
+        break;
+      case 6:
+        offset += 8;
+        break;
+      case 7: {
+        const len = buf.readInt32BE(offset);
+        offset += 4 + len;
+        break;
+      }
+      case 8:
+        patchString();
+        break;
+      case 9: {
+        const listType = buf.readUInt8(offset);
+        offset += 1;
+        const listLen = buf.readInt32BE(offset);
+        offset += 4;
+        for (let i = 0; i < listLen; i++) readTagPayload(listType);
+        break;
+      }
+      case 10:
+        readCompound();
+        break;
+      case 11: {
+        const len = buf.readInt32BE(offset);
+        offset += 4 + len * 4;
+        break;
+      }
+      case 12: {
+        const len = buf.readInt32BE(offset);
+        offset += 4 + len * 8;
+        break;
+      }
+    }
+  }
+
+  function patchString() {
+    const strLen = buf.readUInt16BE(offset);
+    const strBytes = buf.subarray(offset + 2, offset + 2 + strLen);
+    let needs4ByteFix = false;
+    for (let i = 0; i < strLen; i++) {
+      if (strBytes[i]! >= 0xf0) {
+        needs4ByteFix = true;
+        break;
+      }
+    }
+    if (needs4ByteFix) {
+      const str = strBytes.toString('utf8');
+      const mutf8 = encodeModifiedUtf8(str);
+      chunks.push(buf.subarray(lastCopied, offset));
+      const lenBuf = Buffer.allocUnsafe(2);
+      lenBuf.writeUInt16BE(mutf8.length, 0);
+      chunks.push(lenBuf, mutf8);
+      offset += 2 + strLen;
+      lastCopied = offset;
+    } else {
+      offset += 2 + strLen;
+    }
+  }
+
+  function skipString() {
+    const strLen = buf.readUInt16BE(offset);
+    offset += 2 + strLen;
+  }
+
+  function readCompound() {
+    while (offset < buf.length) {
+      const tagType = buf.readUInt8(offset);
+      offset += 1;
+      if (tagType === 0) break;
+      skipString();
+      readTagPayload(tagType);
+    }
+  }
+
+  const rootType = buf.readUInt8(0);
+  offset = 1;
+  skipString();
+  if (rootType === 10) readCompound();
+
+  if (chunks.length === 0) return buf;
+  chunks.push(buf.subarray(lastCopied));
+  return Buffer.concat(chunks);
+}
+
 export const nbt = createTypeHandler<any>({
   write: (value) => {
     const nbtValue = convertToNBT(value);
@@ -486,7 +625,8 @@ export const nbt = createTypeHandler<any>({
       type: 'compound',
       value: nbtValue.value || {},
     };
-    return nbtLib.writeUncompressed(nbtData as any, 'big');
+    const buf = nbtLib.writeUncompressed(nbtData as any, 'big');
+    return hasSupplementaryChars(value) ? patchNbtStrings(buf) : buf;
   },
   read: (buf) => {
     const parsed = nbtLib.parseUncompressed(buf, 'big');
@@ -507,7 +647,8 @@ export const anonymousNbt = createTypeHandler<any>({
       type: 'compound',
       value: nbtValue.value || {},
     };
-    const fullBuffer = nbtLib.writeUncompressed(nbtData as any, 'big');
+    let fullBuffer = nbtLib.writeUncompressed(nbtData as any, 'big');
+    if (hasSupplementaryChars(value)) fullBuffer = patchNbtStrings(fullBuffer);
     return Buffer.concat([fullBuffer.subarray(0, 1), fullBuffer.subarray(3)]);
   },
   read: (buf) => {
@@ -532,7 +673,7 @@ export const anonymousNbt = createTypeHandler<any>({
         const nbtBuffer = nbtLib.writeUncompressed(parsed, 'big');
         size = nbtBuffer.length;
       } catch {
-        // If re-serialization fails, estimate based on buffer scan
+        // NBT re-serialization failed, fall back to buffer length estimate
         size = fullBuffer.length;
       }
     }

@@ -18,6 +18,7 @@ function readOpsFile(path: string): OpsEntry[] {
     try {
       return JSON.parse(readFileSync(path, 'utf-8'));
     } catch {
+      // Malformed JSON in admin list file, reset to empty
       return [];
     }
   }

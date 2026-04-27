@@ -2,6 +2,7 @@
 import blessed from 'blessed';
 import { $, type Subprocess, spawn } from 'bun';
 import { kIsProduction } from './config';
+import { log } from './logging';
 
 const screen = blessed.screen({
   smartCSR: true,
@@ -358,7 +359,7 @@ async function handleGitHubWebhook(req: Request): Promise<Response> {
 
     return new Response('OK - ignored (not main branch)', { status: 200 });
   } catch (e) {
-    console.error('Error handling webhook:', e);
+    log.for('Webhook').error('Error handling webhook: %s', e);
 
     return new Response('Invalid payload', { status: 400 });
   }
