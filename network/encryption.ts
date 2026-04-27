@@ -1,6 +1,7 @@
 import { dlopen, FFIType, ptr } from 'bun:ffi';
 import crypto from 'node:crypto';
 import forge from 'node-forge';
+import { log } from '@/logging';
 
 export interface ServerKeyPair {
   publicKey: Buffer;
@@ -72,7 +73,7 @@ const opensslLib = (() => {
             returns: FFIType.i32,
           },
         });
-        console.log(`[Encryption] Loaded OpenSSL library: ${name}`);
+        log.for('Encryption').info('Loaded OpenSSL library: %s', name);
         return lib;
       } catch (_e) {
         // Try next library name
@@ -85,13 +86,13 @@ const opensslLib = (() => {
 const hasNativeCFB8 = (() => {
   try {
     crypto.createCipheriv('aes-128-cfb8', Buffer.alloc(16), Buffer.alloc(16));
-    console.log('[Encryption] Using native Node.js CFB8');
+    log.for('Encryption').info('Using native Node.js CFB8');
     return true;
   } catch {
     if (opensslLib) {
-      console.log('[Encryption] Using OpenSSL FFI for CFB8');
+      log.for('Encryption').info('Using OpenSSL FFI for CFB8');
     } else {
-      console.warn('[Encryption] Using manual CFB8 (slow - ensure OpenSSL is installed for better performance)');
+      log.for('Encryption').warn('Using manual CFB8 (slow - ensure OpenSSL is installed for better performance)');
     }
     return false;
   }

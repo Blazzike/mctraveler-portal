@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { log } from '@/logging';
 
 export interface MojangProfile {
   id: string;
@@ -49,13 +50,13 @@ export async function verifyMojangSession(username: string, serverId: string, pl
       if (response.status === 204 || response.status === 403) {
         return null;
       }
-      console.error(`[Mojang Auth] HTTP ${response.status}: ${response.statusText}`);
+      log.for('Mojang Auth').error('HTTP %d: %s', response.status, response.statusText);
       return null;
     }
 
     return (await response.json()) as MojangProfile;
   } catch (error) {
-    console.error('[Mojang Auth] Failed to verify session:', error);
+    log.for('Mojang Auth').error('Failed to verify session: %s', error);
     return null;
   }
 }

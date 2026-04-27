@@ -1,5 +1,6 @@
 import { clearCommandsForTesting, setCurrentFeature } from '@/feature-api/command';
 import type { Paint } from '@/feature-api/paint';
+import { log } from '@/logging';
 import { enableModule, type ModuleDefinition, resetModules } from '@/module-api/module';
 import OnlinePlayersModule, { type OnlinePlayer } from '@/modules/OnlinePlayersModule';
 
@@ -173,7 +174,7 @@ export async function init() {
   const { default: definedFeatures } = await import('@/features/registry');
 
   for (const definedFeature of definedFeatures) {
-    console.log(`[+ feature] ${definedFeature.name}`);
+    log.for('Features').info('+ feature %s', definedFeature.name);
     enableFeature(definedFeature as DefinedFeature);
   }
 }

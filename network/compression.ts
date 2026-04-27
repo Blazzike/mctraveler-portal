@@ -1,5 +1,6 @@
 import zlib from 'node:zlib';
 import { varInt } from '../encoding/data-buffer';
+import { log } from '../logging';
 
 // Default compression threshold (256 bytes, same as vanilla)
 export const DEFAULT_COMPRESSION_THRESHOLD = 256;
@@ -111,7 +112,7 @@ export function enableCompression(socket: any, threshold: number): void {
       return originalWrite(compressed, ...args);
     } catch (e) {
       // If parsing fails, just send raw (shouldn't happen)
-      console.error('[Compression] Failed to compress packet:', e);
+      log.for('Compression').error('Failed to compress packet: %s', e);
       return originalWrite(data, ...args);
     }
   };
