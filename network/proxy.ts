@@ -2,19 +2,11 @@ import net from 'node:net';
 import { kIsOnlineMode } from '@/config';
 import { handshakePacket } from '@/defined-packets.gen';
 import { anonymousNbt } from '@/encoding/data-buffer';
-import { executeHookFirst, FeatureHook, registerHook } from '@/feature-api/manager';
+import { FeatureHook, registerHook } from '@/feature-api/manager';
 import { log } from '@/logging';
 import { ConnectionHandler } from '@/network/connection-handler';
 import { generateServerKeyPair, type ServerKeyPair } from '@/network/encryption';
 import { createPacketQueue } from '@/network/packet-queue';
-import {
-  broadcastPlayerJoin,
-  broadcastPlayerLeave,
-  getOnlinePlayers,
-  getPlayerSocket,
-  getServerSocket,
-  type OnlinePlayer,
-} from '@/network/player-tracking';
 import type { StatusResponse } from '@/network/types';
 
 // Re-export for backward compatibility — consumers import these from @/network/proxy

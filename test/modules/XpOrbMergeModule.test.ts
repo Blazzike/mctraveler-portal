@@ -4,7 +4,7 @@ import { spawnEntityPacket } from '@/defined-packets.gen';
 import { enableModule, resetModules } from '@/module-api/module';
 import XpOrbMergeModule from '@/modules/XpOrbMergeModule';
 import { writePacket } from '@/network/defined-packet';
-import { handleServerToClientPacket, resetHandlers, type ProxyPlayer } from '@/network/packet-handlers';
+import { handleServerToClientPacket, type ProxyPlayer, resetHandlers } from '@/network/packet-handlers';
 
 const EXPERIENCE_ORB_TYPE = 47;
 const MERGE_DELAY_MS = 50;
@@ -52,24 +52,10 @@ function createXpOrbPacketData(entityId: number, xp: number, x = 0, y = 64, z = 
 
   const buf = packet;
   let offset = 0;
-  let value = 0;
-  let position = 0;
-  let currentByte: number;
-  do {
-    currentByte = buf.readUInt8(offset);
-    value |= (currentByte & 0x7f) << (7 * position);
-    offset++;
-    position++;
-  } while ((currentByte & 0x80) !== 0);
-
-  value = 0;
-  position = 0;
-  do {
-    currentByte = buf.readUInt8(offset);
-    value |= (currentByte & 0x7f) << (7 * position);
-    offset++;
-    position++;
-  } while ((currentByte & 0x80) !== 0);
+  // Skip two VarInts (packet length + packet id) to get raw packet data
+  for (let i = 0; i < 2; i++) {
+    while ((buf.readUInt8(offset++) & 0x80) !== 0) {}
+  }
 
   return buf.subarray(offset);
 }
@@ -93,20 +79,10 @@ function createNonXpEntityPacketData(entityId: number, entityType: number): Buff
 
   const buf = packet;
   let offset = 0;
-  let position = 0;
-  let currentByte: number;
-  do {
-    currentByte = buf.readUInt8(offset);
-    offset++;
-    position++;
-  } while ((currentByte & 0x80) !== 0);
-
-  position = 0;
-  do {
-    currentByte = buf.readUInt8(offset);
-    offset++;
-    position++;
-  } while ((currentByte & 0x80) !== 0);
+  // Skip two VarInts (packet length + packet id) to get raw packet data
+  for (let i = 0; i < 2; i++) {
+    while ((buf.readUInt8(offset++) & 0x80) !== 0) {}
+  }
 
   return buf.subarray(offset);
 }

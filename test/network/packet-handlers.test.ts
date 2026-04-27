@@ -4,13 +4,13 @@ import {
   handleClientToServerPacket,
   handleServerToClientPacket,
   onClientToServerPacket,
+  onPlayerJoin,
+  onPlayerLeave,
   onServerToClientPacket,
+  type ProxyPlayer,
   resetHandlers,
   triggerPlayerJoin,
   triggerPlayerLeave,
-  onPlayerJoin,
-  onPlayerLeave,
-  type ProxyPlayer,
 } from '@/network/packet-handlers';
 
 function createMockPlayer(): ProxyPlayer {
@@ -151,9 +151,15 @@ describe('packet-handlers', () => {
 
     test('multiple join handlers are all called', () => {
       let count = 0;
-      onPlayerJoin(() => { count++; });
-      onPlayerJoin(() => { count++; });
-      onPlayerJoin(() => { count++; });
+      onPlayerJoin(() => {
+        count++;
+      });
+      onPlayerJoin(() => {
+        count++;
+      });
+      onPlayerJoin(() => {
+        count++;
+      });
 
       triggerPlayerJoin(createMockPlayer());
 

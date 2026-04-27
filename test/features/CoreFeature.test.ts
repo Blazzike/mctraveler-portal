@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { enableFeatureForTesting, reset } from '@/feature-api/manager';
-import { isModuleEnabled } from '@/module-api/module';
 import CoreFeature from '@/features/CoreFeature';
+import { isModuleEnabled } from '@/module-api/module';
 
 describe('CoreFeature', () => {
   beforeAll(() => {

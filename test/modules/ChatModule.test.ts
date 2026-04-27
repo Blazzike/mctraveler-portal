@@ -3,7 +3,7 @@ import { chatMessagePacket } from '@/defined-packets.gen';
 import { string } from '@/encoding/data-buffer';
 import { enableModule, resetModules } from '@/module-api/module';
 import ChatModule from '@/modules/ChatModule';
-import OnlinePlayersModule, { type OnlinePlayer } from '@/modules/OnlinePlayersModule';
+import type { OnlinePlayer } from '@/modules/OnlinePlayersModule';
 
 function createMockPlayer(id: string): OnlinePlayer {
   return {
@@ -102,7 +102,7 @@ describe('ChatModule', () => {
 
     test('calls registered chat handlers', () => {
       let handledMessage = '';
-      ChatModule.api.onChat((player, message) => {
+      ChatModule.api.onChat((_player, message) => {
         handledMessage = message;
         return true;
       });

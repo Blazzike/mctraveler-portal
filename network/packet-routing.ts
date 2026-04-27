@@ -79,7 +79,7 @@ export function parsePlayerMessage(player: OnlinePlayer, packetId: number, packe
   return false;
 }
 
-export function shouldFilterInteractAt(player: OnlinePlayer, packetId: number, packetData: Buffer): boolean {
+export function shouldFilterInteractAt(_player: OnlinePlayer, packetId: number, packetData: Buffer): boolean {
   if (packetId !== useEntityPacket.id) return false;
 
   const data = packetData;
