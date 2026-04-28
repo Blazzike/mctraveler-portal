@@ -5,7 +5,7 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "start": "PRODUCTION=1 go run ./cmd/runner",
+    "start": "go run ./cmd/runner --production",
     "dev": "go run ./cmd/runner",
     "minecraft": "bun run minecraft-server.ts",
     "minecraft:primary": "bun run minecraft-server.ts primary",

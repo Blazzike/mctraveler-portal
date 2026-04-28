@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"charm.land/bubbles/v2/textinput"
@@ -131,13 +131,16 @@ var (
 )
 
 func main() {
+	productionFlag := flag.Bool("production", false, "run proxy in production mode")
+	flag.Parse()
+
 	baseDir, err := os.Getwd()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to resolve working directory: %v\n", err)
 		os.Exit(1)
 	}
 
-	m, err := newModel(baseDir, os.Getenv("PRODUCTION") == "1" || os.Getenv("NODE_ENV") == "production")
+	m, err := newModel(baseDir, *productionFlag || os.Getenv("PRODUCTION") == "1" || os.Getenv("NODE_ENV") == "production")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to initialize runner: %v\n", err)
 		os.Exit(1)
@@ -293,7 +296,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.appendLog(msg.id, "Restarting "+svc.config.title+"... "+msg.reason, false)
 		if svc.running && svc.cmd != nil {
 			m.restarting[msg.id] = true
-			signalProcessGroup(svc.cmd, syscall.SIGTERM)
+			terminateProcess(svc.cmd)
 			return m, nil
 		}
 		return m, m.startService(msg.id)
@@ -582,7 +585,7 @@ func (m model) startService(id serviceID) tea.Cmd {
 		cmd := exec.CommandContext(ctx, svc.config.command, svc.config.args...)
 		cmd.Dir = m.baseDir
 		cmd.Env = append(os.Environ(), svc.config.env...)
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+		configureCommand(cmd)
 
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
@@ -711,7 +714,7 @@ func (m model) shutdownAll() tea.Cmd {
 				continue
 			}
 			if !svc.config.graceful {
-				signalProcessGroup(svc.cmd, syscall.SIGTERM)
+				terminateProcess(svc.cmd)
 				continue
 			}
 			wg.Add(1)
@@ -721,7 +724,7 @@ func (m model) shutdownAll() tea.Cmd {
 					_, _ = io.WriteString(s.stdin, "stop\n")
 					time.Sleep(shutdownGrace)
 				}
-				signalProcessGroup(s.cmd, syscall.SIGTERM)
+				terminateProcess(s.cmd)
 			}(svc)
 		}
 		wg.Wait()
@@ -733,25 +736,13 @@ func (m model) forceKillAll() {
 	for _, id := range m.order {
 		svc := m.services[id]
 		if svc.cmd != nil {
-			signalProcessGroup(svc.cmd, syscall.SIGKILL)
+			killProcess(svc.cmd)
 		}
 		if svc.cancel != nil {
 			svc.cancel()
 		}
 	}
 	m.closeLog()
-}
-
-func signalProcessGroup(cmd *exec.Cmd, signal syscall.Signal) {
-	if cmd == nil || cmd.Process == nil {
-		return
-	}
-	pgid, err := syscall.Getpgid(cmd.Process.Pid)
-	if err == nil {
-		_ = syscall.Kill(-pgid, signal)
-		return
-	}
-	_ = cmd.Process.Signal(signal)
 }
 
 func quitAfter(d time.Duration) tea.Cmd {
