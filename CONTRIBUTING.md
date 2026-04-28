@@ -8,7 +8,8 @@ Portal proxy.
 ### Prerequisites
 
 - **[Bun](https://bun.sh/)** (Runtime & Package Manager)
-- **Java 21+** (Automatically downloaded by the launcher if missing)
+- **[Go](https://go.dev/)** (Bubble Tea launcher)
+- **Java 21+** (Automatically downloaded by the backend server script if missing)
 
 ### Installation
 
@@ -21,9 +22,9 @@ cp .env.example .env  # Optional — defaults work out of the box
 
 ## 🛠️ Running the Project
 
-The easiest way to run the environment is using the development launcher. This
-manages the Proxy and two backend Minecraft servers (Primary & Secondary) in a
-single terminal interface.
+The easiest way to run the environment is using the Bubble Tea development
+launcher. This manages the Proxy and two backend Minecraft servers (Primary &
+Secondary) in a single terminal interface.
 
 ```bash
 bun dev
@@ -38,9 +39,15 @@ bun dev
 
 **Controls:**
 
-- Click a pane or press `1`, `2`, or `3` to focus it.
-- Press `i` to type a command into the focused server console.
+- Press `1`, `2`, or `3` to focus a pane.
+- Press `i` or `Enter` to type a command into the focused server console.
+- Press `↑`/`↓`, `PgUp`/`PgDn`, `Home`/`End` to navigate logs.
+- Press `e` to export all logs to `.mctraveler-runner.log`.
+- Press `c` to copy focused logs through OSC52 when the terminal supports it.
 - Press `q` or `Ctrl+C` to safely shut down all servers.
+
+The runner also writes `.mctraveler-runner-live.log` while it runs so logs are
+easy to copy into bug reports or LLM chats.
 
 **Note:** The proxy runs in **watch mode**. Changes to `*.ts` files will
 automatically restart the proxy process without restarting the backend Minecraft

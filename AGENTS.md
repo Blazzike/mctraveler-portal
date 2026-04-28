@@ -21,13 +21,15 @@ switching, and custom game mechanics via a hook/module/feature system.
 | `bun run check` | Biome lint + format |
 | `bun run format` | Biome format only |
 | `bun run lint` | Biome lint only |
-| `bun run precommit` | typecheck + check (runs on pre-commit hook) |
+| `bun run precommit` | typecheck + check + tests (runs on pre-commit hook) |
 | `bun run generate-packets` | Regenerate `defined-packets.gen.ts` from `defined-packets.json` |
 | `bun run proxy:watch` | Proxy only, with hot reload |
 | `bun run minecraft:primary` | Start primary backend |
 | `bun run minecraft:secondary` | Start secondary backend |
+| `go test ./cmd/runner` | Verify the Bubble Tea runner compiles |
 
-**Always run `bun run typecheck && bun test` after making changes.**
+**Always run `bun run typecheck && bun test` after making changes.** For runner
+changes, also run `go test ./cmd/runner`.
 
 ## Code Style
 
@@ -43,7 +45,7 @@ switching, and custom game mechanics via a hook/module/feature system.
 
 ```
 main.ts              → Entry point, starts proxy
-launcher.ts          → Dev TUI (manages proxy + backend servers)
+cmd/runner/main.go   → Bubble Tea dev TUI (manages proxy + backend servers)
 config.ts            → Env-based configuration constants
 logging.ts           → Structured logging (log.for('Component'))
 

@@ -26,8 +26,9 @@ packet interception, and seamless server switching.
 ## 📋 Prerequisites
 
 - **[Bun](https://bun.sh/)**: Required for the runtime and package management.
+- **[Go](https://go.dev/)**: Required for the Bubble Tea development launcher.
 - **Java 21+**: Required to run the backend Minecraft servers. Automatically
-  downloaded and installed by the launcher.
+  downloaded and installed by the backend server script.
 
 ## 🛠️ Installation
 
@@ -65,9 +66,9 @@ Environment variables can be set in `.env` (see `.env.example` for details):
 
 ### The Developer Launcher (Recommended)
 
-The easiest way to run the environment is with the built-in launcher. This
-starts the proxy and two vanilla Minecraft servers (Primary & Secondary) in a
-single terminal window.
+The easiest way to run the environment is with the built-in Bubble Tea launcher.
+This starts the proxy and two vanilla Minecraft servers (Primary & Secondary) in
+a single terminal window.
 
 ```bash
 bun dev
@@ -80,8 +81,14 @@ bun dev
 **Controls:**
 
 - `1`, `2`, `3`: Switch focus between Primary, Secondary, and Proxy logs.
-- `i`: Open input bar to send commands to the focused server.
-- `q`: Gracefully shutdown all servers.
+- `i` or `Enter`: Open input bar to send commands to the focused server.
+- `↑`/`↓`, `PgUp`/`PgDn`, `Home`/`End`: Navigate focused logs (`End` resumes auto-follow).
+- `e`: Export all pane logs to `.mctraveler-runner.log`.
+- `c`: Copy the focused pane through OSC52 clipboard support when the terminal supports it.
+- `q` or `Ctrl+C`: Gracefully shutdown all servers.
+
+The runner also writes a plain, continually updated `.mctraveler-runner-live.log`
+file for easy copy/paste into LLMs and bug reports.
 
 ### Manual Usage
 
