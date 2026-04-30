@@ -1,13 +1,32 @@
+import { anonymousNbt } from '@/encoding/data-buffer';
 import { registerCommand, syntax } from '@/feature-api/command';
 import { defineFeature, FeatureHook, registerHook } from '@/feature-api/manager';
 import p from '@/feature-api/paint';
+import MessageModule from '@/modules/MessageModule';
 import type { OnlinePlayer } from '@/modules/OnlinePlayersModule';
 
 const replyMap = new WeakMap<OnlinePlayer, OnlinePlayer>();
+const recentDeathMessages = new Set<string>();
 
 export default defineFeature({
   name: 'ChatProvider',
   onEnable: () => {
+    registerHook(FeatureHook.SystemChat, ({ nbt, isActionBar }) => {
+      if (isActionBar) return;
+      try {
+        const decoded = anonymousNbt.read(nbt);
+        if (decoded && decoded.translate && typeof decoded.translate === 'string' && decoded.translate.startsWith('death.')) {
+          const msgHash = JSON.stringify(decoded);
+          if (!recentDeathMessages.has(msgHash)) {
+            recentDeathMessages.add(msgHash);
+            setTimeout(() => recentDeathMessages.delete(msgHash), 1000);
+            MessageModule.api.broadcast(decoded);
+          }
+          return false;
+        }
+      } catch (e) {}
+    });
+
     registerHook(FeatureHook.PlayerChat, (e) => p`${p.green(e.player.name)} ${e.message}`);
     registerHook(FeatureHook.PlayerJoinedMessage, ({ username }) => p.gray`${p.darkGray`[${p.green('+')}]`} ${p.green(username)} joined`);
     registerHook(FeatureHook.PlayerLeftMessage, ({ username }) => p.gray`${p.darkGray`[${p.red('-')}]`} ${p.red(username)} left.`);
