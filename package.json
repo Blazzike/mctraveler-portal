@@ -28,7 +28,7 @@
     "pre-commit": "bun run precommit"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.12",
+    "@biomejs/biome": "^2.4.13",
     "@types/blessed": "^0.1.27",
     "@types/bun": "latest",
     "@types/node": "^24.12.2",
@@ -40,10 +40,10 @@
   },
   "dependencies": {
     "@noble/ciphers": "^2.2.0",
-    "@sentry/bun": "^10.50.0",
+    "@sentry/bun": "^10.51.0",
     "blessed": "^0.1.81",
     "dedent": "^1.7.2",
-    "minecraft-data": "^3.109.0",
+    "minecraft-data": "^3.109.1",
     "minecraft-protocol": "^1.66.0",
     "node-forge": "^1.4.0",
     "prismarine-nbt": "^2.8.0",
