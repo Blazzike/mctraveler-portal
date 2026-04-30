@@ -1,8 +1,18 @@
 #!/usr/bin/env bun
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import blessed from 'blessed';
 import { $, type Subprocess, spawn } from 'bun';
 import { kIsProduction } from './config';
 import { log } from './logging';
+
+// Ensure logs directory exists
+try {
+  mkdirSync('logs', { recursive: true });
+} catch (_e) {}
+
+// biome-ignore lint/suspicious/noControlCharactersInRegex: needed for ansi stripping
+const stripAnsi = (str: string) => str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
 
 const screen = blessed.screen({
   smartCSR: true,
@@ -15,6 +25,56 @@ let isShuttingDown = false;
 let isRestartingProxy = false;
 let _hasError = false;
 let focusedPane: 'primary' | 'secondary' | 'proxy' = 'primary';
+let maximizedPane: 'primary' | 'secondary' | 'proxy' | null = null;
+
+const DEFAULT_LAYOUT = {
+  primary: { top: 0, left: 0, width: '50%', height: '50%-1' },
+  secondary: { top: 0, left: '50%', width: '50%', height: '50%-1' },
+  proxy: { top: '50%', left: 0, width: '100%', height: '50%-1' },
+};
+
+function updateLayout() {
+  const boxMap = { primary: primaryBox, secondary: secondaryBox, proxy: proxyBox };
+
+  for (const [key, box] of Object.entries(boxMap)) {
+    if (maximizedPane) {
+      if (key === maximizedPane) {
+        box.top = 0;
+        box.left = 0;
+        box.width = '100%' as any;
+        box.height = '100%-1' as any;
+        box.show();
+      } else {
+        box.hide();
+      }
+    } else {
+      const layout = DEFAULT_LAYOUT[key as keyof typeof DEFAULT_LAYOUT];
+      box.top = layout.top;
+      box.left = layout.left;
+      box.width = layout.width as any;
+      box.height = layout.height as any;
+      box.show();
+    }
+  }
+
+  boxMap[focusedPane].focus();
+
+  const maxText = maximizedPane ? ` | M: Restore` : ' | M: Maximize';
+  helpBar.setContent(` 1: Primary | 2: Secondary | 3: Proxy | I: Send Command | Q/Ctrl+C: Quit | ↑↓: Scroll | Logs in ./logs/${maxText}`);
+  screen.render();
+}
+
+function handlePaneKey(pane: 'primary' | 'secondary' | 'proxy') {
+  if (focusedPane === pane) {
+    maximizedPane = maximizedPane === pane ? null : pane;
+  } else {
+    focusedPane = pane;
+    if (maximizedPane && maximizedPane !== pane) {
+      maximizedPane = pane;
+    }
+  }
+  updateLayout();
+}
 
 function killAllProcesses() {
   if (isShuttingDown) return;
@@ -173,7 +233,7 @@ const helpBar = blessed.box({
     fg: 'black',
     bg: 'white',
   },
-  content: ' 1: Primary | 2: Secondary | 3: Proxy | I: Send Command | Q/Ctrl+C: Quit | ↑↓: Scroll ',
+  content: ' 1: Primary | 2: Secondary | 3: Proxy | I: Send Command | Q/Ctrl+C: Quit | ↑↓: Scroll | Logs in ./logs/ | M: Maximize',
   tags: true,
 });
 
@@ -191,22 +251,13 @@ screen.key(['q', 'C-c'], () => {
   }
 });
 
-screen.key(['1'], () => {
-  focusedPane = 'primary';
-  primaryBox.focus();
-  screen.render();
-});
+screen.key(['1'], () => handlePaneKey('primary'));
+screen.key(['2'], () => handlePaneKey('secondary'));
+screen.key(['3'], () => handlePaneKey('proxy'));
 
-screen.key(['2'], () => {
-  focusedPane = 'secondary';
-  secondaryBox.focus();
-  screen.render();
-});
-
-screen.key(['3'], () => {
-  focusedPane = 'proxy';
-  proxyBox.focus();
-  screen.render();
+screen.key(['m', 'M'], () => {
+  maximizedPane = maximizedPane ? null : focusedPane;
+  updateLayout();
 });
 
 screen.key(['i'], () => {
@@ -269,6 +320,9 @@ async function startProcess(
   const processKey = name.toLowerCase().split(' ')[0] || name.toLowerCase();
   processes.set(processKey, proc);
 
+  const logFile = join('logs', `${processKey}.log`);
+  writeFileSync(logFile, `--- Starting ${name} at ${new Date().toISOString()} ---\n`);
+
   appendToBox(box, `Starting ${name}...`);
 
   const processOutput = async (stream: ReadableStream<Uint8Array>, isError: boolean) => {
@@ -281,6 +335,13 @@ async function startProcess(
         if (done) break;
 
         const text = decoder.decode(value, { stream: true });
+
+        try {
+          appendFileSync(logFile, stripAnsi(text));
+        } catch (_e) {
+          // Ignore file write errors
+        }
+
         const lines = text.split('\n');
 
         for (const line of lines) {

@@ -2,7 +2,7 @@ import { defineModule } from '@/module-api/module';
 
 let currentTps = 20.0;
 let lastTick = Date.now();
-let intervalId: Timer | null = null;
+let _intervalId: Timer | null = null;
 
 export default defineModule({
   name: 'Tps',
@@ -12,7 +12,7 @@ export default defineModule({
     },
   },
   onEnable: () => {
-    intervalId = setInterval(() => {
+    _intervalId = setInterval(() => {
       const now = Date.now();
       const elapsed = now - lastTick;
       lastTick = now;

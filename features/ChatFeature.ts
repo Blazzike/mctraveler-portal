@@ -15,7 +15,7 @@ export default defineFeature({
       if (isActionBar) return;
       try {
         const decoded = anonymousNbt.read(nbt);
-        if (decoded && decoded.translate && typeof decoded.translate === 'string' && decoded.translate.startsWith('death.')) {
+        if (decoded?.translate && typeof decoded.translate === 'string' && decoded.translate.startsWith('death.')) {
           const msgHash = JSON.stringify(decoded);
           if (!recentDeathMessages.has(msgHash)) {
             recentDeathMessages.add(msgHash);
@@ -24,7 +24,7 @@ export default defineFeature({
           }
           return false;
         }
-      } catch (e) {}
+      } catch (_e) {}
     });
 
     registerHook(FeatureHook.PlayerChat, (e) => p`${p.green(e.player.name)} ${e.message}`);
