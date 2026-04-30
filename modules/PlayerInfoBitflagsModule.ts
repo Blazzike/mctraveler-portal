@@ -1,5 +1,5 @@
+import { playerRemovePacket, spawnEntityPacket } from '@/defined-packets.gen';
 import { anonymousNbt, string as stringHandler, uuid as uuidHandler, varInt as varIntHandler } from '@/encoding/data-buffer';
-import { spawnEntityPacket, playerRemovePacket } from '@/defined-packets.gen';
 import { log } from '@/logging';
 import { playerInfoUpdatePacket } from '@/manual-packets';
 import { defineModule } from '@/module-api/module';
@@ -232,11 +232,7 @@ function rebuildSpawnEntity(packetData: Buffer): Buffer | null {
       const player = OnlinePlayersModule.api.getPlayerByOfflineUuid(originalUuid);
       if (player) {
         const onlineUuidBuffer = uuidHandler(player.uuid);
-        return Buffer.concat([
-          packetData.subarray(0, offset),
-          onlineUuidBuffer,
-          packetData.subarray(offset + 16)
-        ]);
+        return Buffer.concat([packetData.subarray(0, offset), onlineUuidBuffer, packetData.subarray(offset + 16)]);
       }
     }
   } catch (e) {

@@ -18,7 +18,7 @@ export default defineModule({
       lastTick = now;
 
       const tps = Math.min(20, 20 * (1000 / Math.max(1000, elapsed)));
-      currentTps = (currentTps * 0.9) + (tps * 0.1);
+      currentTps = currentTps * 0.9 + tps * 0.1;
     }, 1000);
   },
 });
