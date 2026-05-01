@@ -62,11 +62,18 @@ function handlePlayerRemovePacket(packetData: Buffer): void {
 
     for (let i = 0; i < numPlayers; i++) {
       if (offset + 16 > packetData.length) return;
-      const uuid = uuidHandler.read(packetData.subarray(offset));
+      const offlineUUID = uuidHandler.read(packetData.subarray(offset));
       offset += 16;
 
-      if (globalTabList.delete(uuid)) {
-        log.for('TabList').debug('Removed player from globalTabList: %s', uuid);
+      const player = OnlinePlayersModule.api.getPlayerByOfflineUuid(offlineUUID);
+      const onlineUUID = player?.uuid;
+      const finalUUID = onlineUUID || offlineUUID;
+
+      if (globalTabList.delete(finalUUID)) {
+        log.for('TabList').debug('Removed player from globalTabList: %s', finalUUID);
+      }
+      if (onlineUUID) {
+        globalTabList.delete(offlineUUID);
       }
     }
     log.for('TabList').debug('After removal, globalTabList.size=%d', globalTabList.size);

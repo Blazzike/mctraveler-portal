@@ -7,6 +7,7 @@ import PersistenceModule from '@/modules/PersistenceModule';
 import PlayerInfoBitflagsModule from '@/modules/PlayerInfoBitflagsModule';
 import ProtectionHooksModule from '@/modules/ProtectionHooksModule';
 import TabListModule from '@/modules/TabListModule';
+import TpsModule from '@/modules/TpsModule';
 import XpOrbMergeModule from '@/modules/XpOrbMergeModule';
 
 export default defineFeature({
@@ -20,6 +21,7 @@ export default defineFeature({
     heldItem: HeldItemModule,
     playerInfo: PlayerInfoBitflagsModule,
     protection: ProtectionHooksModule,
+    tps: TpsModule,
     xpOrbMerge: XpOrbMergeModule,
   },
   onEnable: () => {},

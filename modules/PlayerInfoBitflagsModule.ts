@@ -1,3 +1,4 @@
+import { playerRemovePacket, spawnEntityPacket } from '@/defined-packets.gen';
 import { anonymousNbt, string as stringHandler, uuid as uuidHandler, varInt as varIntHandler } from '@/encoding/data-buffer';
 import { log } from '@/logging';
 import { playerInfoUpdatePacket } from '@/manual-packets';
@@ -24,7 +25,26 @@ const FLAGS = {
   UPDATE_LIST_ORDER: 0x80,
 };
 
-function rebuildPlayerInfoBitflags(packetData: Buffer): Buffer | null {
+import p, { type Paint } from '@/feature-api/paint';
+import { safeWrite } from '@/network/util';
+
+function sendDisplayNameUpdate(socket: any, uuidBuffer: Buffer, paint: Paint) {
+  const FLAGS_DISPLAY_NAME = 0x20;
+  const parts: Buffer[] = [];
+  parts.push(Buffer.from([FLAGS_DISPLAY_NAME]));
+  parts.push(varIntEncoder(1));
+  parts.push(uuidBuffer);
+  parts.push(Buffer.from([0x01])); // hasDisplayName
+  parts.push(anonymousNbt(paint.toNbtObject()));
+
+  const content = Buffer.concat(parts);
+  const packetIdBuf = varIntEncoder(playerInfoUpdatePacket.id);
+  const packetContent = Buffer.concat([packetIdBuf, content]);
+  const fullPacket = Buffer.concat([varIntEncoder(packetContent.length), packetContent]);
+  safeWrite(socket, fullPacket);
+}
+
+function rebuildPlayerInfoBitflags(packetData: Buffer, _player?: any): Buffer | null {
   try {
     let offset = 0;
 
@@ -158,8 +178,14 @@ function rebuildPlayerInfoBitflags(packetData: Buffer): Buffer | null {
 
       if (flags & FLAGS.UPDATE_LATENCY) {
         const pingResult = readVarIntAt(packetData, offset);
-        newPacketParts.push(varIntEncoder(pingResult.value));
+        const pingValue = pingResult.value;
+        newPacketParts.push(varIntEncoder(pingValue));
         offset = pingResult.offset;
+
+        if (player && _player) {
+          const namePaint = p`${p.green(player.username)} ${p.darkGray(`[${pingValue}ms]`)}`;
+          sendDisplayNameUpdate(_player.clientSocket, uuidHandler(finalUUID), namePaint);
+        }
       }
 
       if (flags & FLAGS.UPDATE_DISPLAY_NAME) {
@@ -197,6 +223,56 @@ function rebuildPlayerInfoBitflags(packetData: Buffer): Buffer | null {
   }
 }
 
+function rebuildSpawnEntity(packetData: Buffer): Buffer | null {
+  try {
+    const idResult = varIntHandler.readWithBytesCount(packetData);
+    const offset = idResult.bytesRead;
+    if (offset + 16 <= packetData.length) {
+      const originalUuid = uuidHandler.read(packetData.subarray(offset));
+      const player = OnlinePlayersModule.api.getPlayerByOfflineUuid(originalUuid);
+      if (player) {
+        const onlineUuidBuffer = uuidHandler(player.uuid);
+        return Buffer.concat([packetData.subarray(0, offset), onlineUuidBuffer, packetData.subarray(offset + 16)]);
+      }
+    }
+  } catch (e) {
+    log.for('PlayerInfo').error('Error rebuilding spawn entity packet: %s', e);
+  }
+  return packetData;
+}
+
+function rebuildPlayerRemovePacket(packetData: Buffer): Buffer | null {
+  try {
+    let offset = 0;
+    const countResult = varIntHandler.readWithBytesCount(packetData);
+    const count = countResult.value;
+    offset += countResult.bytesRead;
+
+    const newPacketParts: Buffer[] = [];
+    newPacketParts.push(packetData.subarray(0, offset));
+
+    let changed = false;
+    for (let i = 0; i < count; i++) {
+      if (offset + 16 > packetData.length) return packetData;
+      const originalUuid = uuidHandler.read(packetData.subarray(offset));
+      const player = OnlinePlayersModule.api.getPlayerByOfflineUuid(originalUuid);
+      if (player) {
+        newPacketParts.push(uuidHandler(player.uuid));
+        changed = true;
+      } else {
+        newPacketParts.push(packetData.subarray(offset, offset + 16));
+      }
+      offset += 16;
+    }
+    if (changed) {
+      return Buffer.concat(newPacketParts);
+    }
+  } catch (e) {
+    log.for('PlayerInfo').error('Error rebuilding player remove packet: %s', e);
+  }
+  return packetData;
+}
+
 export default defineModule({
   name: 'PlayerInfoBitflags',
   api: {
@@ -204,7 +280,15 @@ export default defineModule({
   },
   onEnable: () => {
     onServerToClientTransform(playerInfoUpdatePacket.id, (_player, _packetId, packetData) => {
-      return rebuildPlayerInfoBitflags(packetData);
+      return rebuildPlayerInfoBitflags(packetData, _player);
+    });
+
+    onServerToClientTransform(spawnEntityPacket.id, (_player, _packetId, packetData) => {
+      return rebuildSpawnEntity(packetData);
+    });
+
+    onServerToClientTransform(playerRemovePacket.id, (_player, _packetId, packetData) => {
+      return rebuildPlayerRemovePacket(packetData);
     });
   },
 });
